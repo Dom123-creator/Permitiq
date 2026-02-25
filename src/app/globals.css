@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0a0d12;
+  --surface: #111620;
+  --surface2: #171d2b;
+  --border: #1e2a3d;
+  --accent: #00e5ff;
+  --accent2: #ff6b35;
+  --success: #00c896;
+  --warn: #ffc300;
+  --danger: #ff3d5a;
+  --purple: #a78bfa;
+  --text: #e8edf5;
+  --muted: #5a6a85;
+  --card: #141a26;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* Grid overlay pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(30, 42, 61, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 42, 61, 0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Base component styles */
+@layer components {
+  .panel {
+    @apply bg-surface border border-border rounded-lg;
+  }
+
+  .panel-header {
+    @apply flex items-center justify-between p-4 border-b border-border;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full;
+  }
+
+  .badge-success {
+    @apply bg-success/20 text-success;
+  }
+
+  .badge-warn {
+    @apply bg-warn/20 text-warn;
+  }
+
+  .badge-danger {
+    @apply bg-danger/20 text-danger;
+  }
+
+  .badge-info {
+    @apply bg-accent/20 text-accent;
+  }
+
+  .badge-purple {
+    @apply bg-purple/20 text-purple;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-accent text-bg hover:bg-accent/90;
+  }
+
+  .btn-secondary {
+    @apply bg-surface2 text-text border border-border hover:bg-border;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-text hover:bg-surface2;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white hover:bg-danger/90;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .stat-card {
+    @apply bg-card border border-border rounded-lg p-4;
+  }
+
+  .days-chip {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium rounded;
+  }
+
+  .days-chip-ok {
+    @apply bg-success/20 text-success;
+  }
+
+  .days-chip-warn {
+    @apply bg-warn/20 text-warn;
+  }
+
+  .days-chip-danger {
+    @apply bg-danger/20 text-danger;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 bg-surface2 border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent;
+  }
+
+  .select {
+    @apply w-full px-3 py-2 bg-surface2 border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent appearance-none cursor-pointer;
+  }
+
+  .task-item {
+    @apply flex items-center gap-3 p-3 bg-surface2 border border-border rounded-lg hover:border-muted transition-colors;
+  }
+
+  .toast {
+    @apply fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2;
+  }
+
+  .toast-success {
+    @apply bg-success text-bg;
+  }
+
+  .toast-warn {
+    @apply bg-warn text-bg;
+  }
+
+  .toast-danger {
+    @apply bg-danger text-white;
+  }
+
+  .toast-info {
+    @apply bg-accent text-bg;
+  }
+}

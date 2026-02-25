@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(cd /c/Users/17063/Downloads/Permitiq && npx tsc --noEmit 2>&1)",
+      "Bash(curl -s http://localhost:3000/api/permits | python3 -c \"\nimport json, sys\ndata = json.load\\(sys.stdin\\)\nprint\\(f'Permits returned: {len\\(data\\)}'\\)\nif data:\n    p = data[0]\n    print\\(f'First permit: {p[\\\\\"name\\\\\"]} | status={p[\\\\\"status\\\\\"]} | daysInQueue={p[\\\\\"daysInQueue\\\\\"]} | avgDays={p[\\\\\"avgDays\\\\\"]} | docs={p[\\\\\"documentCount\\\\\"]} | inspections={p[\\\\\"inspectionCount\\\\\"]}'\\)\n\" 2>&1)",
+      "Bash(head:*)",
+      "Bash(node:*)",
+      "Bash(echo exit:$?:*)",
+      "Bash(curl:*)",
+      "Bash(cd /c/Users/17063/Downloads/Permitiq && DATABASE_URL=\"postgresql://neondb_owner:npg_D6JgvZw7yPLB@ep-steep-darkness-ahdna9yo-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npm run db:push 2>&1)"
+    ]
+  }
+}
