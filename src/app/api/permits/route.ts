@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc, sql, and } from 'drizzle-orm';
-import { getDb, permits, projects, documents, inspections } from '@/lib/db';
+import { getDb, permits, projects, documents, inspections, fees } from '@/lib/db';
 
 // Jurisdiction average review days — used to colour-code days-in-queue
 const JURISDICTION_AVG: Record<string, number> = {
@@ -56,11 +56,13 @@ export async function GET(request: NextRequest) {
         documentCount: sql<number>`cast(count(distinct ${documents.id}) as int)`,
         inspectionCount: sql<number>`cast(count(distinct ${inspections.id}) as int)`,
         inspectionsPassed: sql<number>`cast(count(distinct case when ${inspections.result} = 'pass' then ${inspections.id} end) as int)`,
+        feeCount: sql<number>`cast(count(distinct ${fees.id}) as int)`,
       })
       .from(permits)
       .leftJoin(projects, eq(permits.projectId, projects.id))
       .leftJoin(documents, eq(documents.permitId, permits.id))
       .leftJoin(inspections, eq(inspections.permitId, permits.id))
+      .leftJoin(fees, eq(fees.permitId, permits.id))
       .where(
         and(
           eq(permits.archived, showArchived),

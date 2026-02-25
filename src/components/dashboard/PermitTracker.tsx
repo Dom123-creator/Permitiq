@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { DocumentPanel } from '@/components/documents';
 import { InspectionPanel } from '@/components/inspections';
+import { FeePanel } from '@/components/costs';
 import { AddPermitModal, EditPermitModal } from '@/components/permits';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 
@@ -19,6 +20,7 @@ interface Permit {
   documentCount: number;
   inspectionCount: number;
   inspectionsPassed: number;
+  feeCount: number;
   expiryDate: Date | null;
   projectId?: string | null;
   authority?: string | null;
@@ -47,7 +49,9 @@ const demoPermits: Permit[] = [
     documentCount: 3,
     inspectionCount: 5,
     inspectionsPassed: 2,
+    feeCount: 2,
     expiryDate: daysFromNow(45),
+    feeBudgeted: 3200,
   },
   {
     id: '2',
@@ -62,7 +66,9 @@ const demoPermits: Permit[] = [
     documentCount: 5,
     inspectionCount: 2,
     inspectionsPassed: 0,
+    feeCount: 1,
     expiryDate: daysFromNow(15),
+    feeBudgeted: 1850,
   },
   {
     id: '3',
@@ -77,7 +83,9 @@ const demoPermits: Permit[] = [
     documentCount: 2,
     inspectionCount: 2,
     inspectionsPassed: 2,
+    feeCount: 1,
     expiryDate: daysFromNow(120),
+    feeBudgeted: 950,
   },
   {
     id: '4',
@@ -92,7 +100,9 @@ const demoPermits: Permit[] = [
     documentCount: 0,
     inspectionCount: 2,
     inspectionsPassed: 0,
+    feeCount: 0,
     expiryDate: daysFromNow(7),
+    feeBudgeted: 2100,
   },
   {
     id: '5',
@@ -107,7 +117,9 @@ const demoPermits: Permit[] = [
     documentCount: 1,
     inspectionCount: 2,
     inspectionsPassed: 1,
+    feeCount: 1,
     expiryDate: null,
+    feeBudgeted: 750,
   },
   {
     id: '6',
@@ -122,7 +134,9 @@ const demoPermits: Permit[] = [
     documentCount: 4,
     inspectionCount: 5,
     inspectionsPassed: 3,
+    feeCount: 3,
     expiryDate: daysFromNow(25),
+    feeBudgeted: 4400,
   },
   {
     id: '7',
@@ -137,7 +151,9 @@ const demoPermits: Permit[] = [
     documentCount: 1,
     inspectionCount: 2,
     inspectionsPassed: 0,
+    feeCount: 0,
     expiryDate: daysFromNow(90),
+    feeBudgeted: 1200,
   },
 ];
 
@@ -207,6 +223,7 @@ export function PermitTracker() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingPermit, setEditingPermit] = useState<Permit | null>(null);
   const [taskingPermit, setTaskingPermit] = useState<Permit | null>(null);
+  const [feePermit, setFeePermit] = useState<Permit | null>(null);
 
   // Derived state
   const isLoading = !isDemoMode && apiPermits === null;
@@ -414,6 +431,12 @@ export function PermitTracker() {
   const closeInspections = () => {
     setIsInspectionPanelOpen(false);
     setSelectedPermit(null);
+  };
+
+  const openFees = (permit: Permit) => {
+    setFeePermit(permit);
+    setIsDocPanelOpen(false);
+    setIsInspectionPanelOpen(false);
   };
 
   const handleDelete = async (permit: Permit) => {
@@ -833,6 +856,9 @@ export function PermitTracker() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">
                   Inspections
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">
+                  Fees
+                </th>
                 <th
                   onClick={() => handleSort('status')}
                   className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide cursor-pointer hover:text-text group"
@@ -850,7 +876,7 @@ export function PermitTracker() {
             <tbody>
               {filteredPermits.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center">
+                  <td colSpan={10} className="px-4 py-12 text-center">
                     <div className="text-muted">
                       <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -944,6 +970,30 @@ export function PermitTracker() {
                         </button>
                       </td>
                       <td className="px-4 py-3">
+                        <button
+                          onClick={() => openFees(permit)}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface2 hover:bg-border transition-colors group"
+                          title="View fee log"
+                        >
+                          <svg
+                            className="w-4 h-4 text-muted group-hover:text-accent"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <span className={`text-xs font-medium ${permit.feeCount > 0 ? 'text-text' : 'text-muted'}`}>
+                            {permit.feeCount}
+                          </span>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
                         <span className={`badge ${statusConfig[permit.status].class}`}>
                           {statusConfig[permit.status].label}
                         </span>
@@ -1018,6 +1068,17 @@ export function PermitTracker() {
           permitType={selectedPermit.type}
           isOpen={isInspectionPanelOpen}
           onClose={closeInspections}
+        />
+      )}
+
+      {/* Fee Panel */}
+      {feePermit && (
+        <FeePanel
+          permitId={feePermit.id}
+          permitName={feePermit.name}
+          feeBudgeted={feePermit.feeBudgeted}
+          isOpen={!!feePermit}
+          onClose={() => setFeePermit(null)}
         />
       )}
 

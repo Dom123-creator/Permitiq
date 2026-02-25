@@ -1,5 +1,5 @@
 import { Header } from '@/components/dashboard/Header';
-import { CostImpactDashboard } from '@/components/costs';
+import { CostImpactDashboard, FeeStatCards } from '@/components/costs';
 
 export default function CostsPage() {
   return (
@@ -9,9 +9,10 @@ export default function CostsPage() {
         <div className="mb-6">
           <h1 className="text-xl font-bold text-text">Cost Impact</h1>
           <p className="text-sm text-muted mt-1">
-            Delay costs and schedule risk across your portfolio — hover a project to edit its daily carrying cost
+            Delay costs, permit fees, and schedule risk across your portfolio
           </p>
         </div>
+        <FeeStatCards />
         <CostImpactDashboard />
       </main>
     </div>
