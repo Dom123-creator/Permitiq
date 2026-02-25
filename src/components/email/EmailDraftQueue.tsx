@@ -55,7 +55,14 @@ export function EmailDraftQueue({ refreshKey, onAction }: EmailDraftQueueProps) 
     const res = await fetch(`/api/emails/${draft.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'sent', sentAt: new Date().toISOString() }),
+      body: JSON.stringify({
+        subject: draft.subject,
+        body: draft.body,
+        recipient: draft.recipient,
+        recipientName: draft.recipientName,
+        status: 'sent',
+        sentAt: new Date().toISOString(),
+      }),
     });
     if (res.ok) {
       setDrafts((prev) => prev.filter((d) => d.id !== draft.id));

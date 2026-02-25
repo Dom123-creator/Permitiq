@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { eq, and, gte } from 'drizzle-orm';
-import { getDb, rules, permits, projects, tasks, auditLog } from '@/lib/db';
+import { getDb, rules, permits, projects, tasks, auditLog, emailDrafts } from '@/lib/db';
+
+const JURISDICTION_CONTACTS: Record<string, { email: string; name: string }> = {
+  Houston: { email: 'permits@houstontx.gov', name: 'City of Houston Permit Office' },
+  'Harris County': { email: 'permits@harriscountytx.gov', name: 'Harris County Permit Office' },
+  Austin: { email: 'permits@austintexas.gov', name: 'Austin Development Services' },
+  Dallas: { email: 'permits@dallascityhall.com', name: 'Dallas Development Services' },
+  'San Antonio': { email: 'permits@sanantonio.gov', name: 'San Antonio Development Services' },
+};
 
 // Jurisdiction average review days
 const JURISDICTION_AVG: Record<string, number> = {
@@ -74,6 +82,7 @@ export async function POST() {
 
     const fired: FiredRule[] = [];
     const newTasks: typeof tasks.$inferInsert[] = [];
+    const newDrafts: typeof emailDrafts.$inferInsert[] = [];
     const auditEntries: typeof auditLog.$inferInsert[] = [];
 
     for (const permit of activePermits) {
@@ -89,15 +98,28 @@ export async function POST() {
         let shouldFire = false;
         let taskTitle = '';
         let priority = 'medium';
+        let draftToCreate: typeof emailDrafts.$inferInsert | null = null;
 
         switch (rule.name) {
-          case 'Overdue Escalation':
+          case 'Overdue Escalation': {
             if (days > avg + 20 && !['approved', 'rejected'].includes(permit.status)) {
               shouldFire = true;
               taskTitle = `Escalate: ${permit.name} — ${days}d in queue (avg ${avg}d)`;
               priority = 'urgent';
+              const c = JURISDICTION_CONTACTS[permit.jurisdiction];
+              draftToCreate = {
+                permitId: permit.id,
+                subject: `Urgent: Permit Review Escalation - ${permit.name}`,
+                body: `Dear ${c?.name ?? permit.jurisdiction + ' Permit Office'},\n\nI am writing to request an expedited review of permit application for ${permit.name} (${permit.projectName ?? ''}).\n\nThis permit has been under review for ${days} days, which exceeds the typical processing time of ${avg} days for ${permit.type} permits in ${permit.jurisdiction}.\n\nThe delay is impacting our construction schedule and causing significant carrying costs. We kindly request this application be prioritized for review.\n\nPlease let us know if any additional documentation is required.\n\nThank you,\n[Your Name]`,
+                recipient: c?.email ?? null,
+                recipientName: c?.name ?? null,
+                templateType: 'escalation',
+                createdBy: 'agent',
+                status: 'pending-review',
+              };
             }
             break;
+          }
 
           case 'Slow Review Alert':
             if (days > avg && !['approved', 'rejected'].includes(permit.status)) {
@@ -107,13 +129,25 @@ export async function POST() {
             }
             break;
 
-          case 'Info Request Response':
+          case 'Info Request Response': {
             if (permit.status === 'info-requested') {
               shouldFire = true;
               taskTitle = `Respond to info request: ${permit.name} — ${permit.jurisdiction}`;
               priority = 'urgent';
+              const c = JURISDICTION_CONTACTS[permit.jurisdiction];
+              draftToCreate = {
+                permitId: permit.id,
+                subject: `Re: Additional Information Request - ${permit.name}`,
+                body: `Dear ${c?.name ?? permit.jurisdiction + ' Permit Office'},\n\nThank you for your review of the permit application for ${permit.name} (${permit.projectName ?? ''}).\n\nIn response to your request for additional information, we are preparing the required documents and anticipate submitting within 5 business days.\n\nPlease let us know if you need any clarification in the meantime.\n\nBest regards,\n[Your Name]`,
+                recipient: c?.email ?? null,
+                recipientName: c?.name ?? null,
+                templateType: 'info-response',
+                createdBy: 'agent',
+                status: 'pending-review',
+              };
             }
             break;
+          }
 
           case 'Hearing Prep Reminder':
             if (hearing !== null && hearing <= 14 && hearing >= 0) {
@@ -151,11 +185,15 @@ export async function POST() {
             status: 'pending',
           });
 
+          if (draftToCreate) {
+            newDrafts.push(draftToCreate);
+          }
+
           auditEntries.push({
             permitId: permit.id,
             actorType: 'agent',
             action: 'rule_triggered',
-            newValue: `Rule: ${rule.name} → task created`,
+            newValue: `Rule: ${rule.name} → task created${draftToCreate ? ' + email draft' : ''}`,
           });
 
           fired.push({
@@ -171,9 +209,12 @@ export async function POST() {
       }
     }
 
-    // Persist new tasks and audit entries
+    // Persist new tasks, drafts, and audit entries
     if (newTasks.length > 0) {
       await db.insert(tasks).values(newTasks);
+    }
+    if (newDrafts.length > 0) {
+      await db.insert(emailDrafts).values(newDrafts);
     }
     if (auditEntries.length > 0) {
       await db.insert(auditLog).values(auditEntries);
@@ -196,6 +237,7 @@ export async function POST() {
 
     return NextResponse.json({
       tasksCreated: newTasks.length,
+      emailDraftsCreated: newDrafts.length,
       rulesEvaluated: enabledRules.length,
       permitsScanned: activePermits.length,
       fired,
