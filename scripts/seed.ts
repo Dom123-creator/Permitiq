@@ -2,6 +2,10 @@
  * Seed script — populates Neon with demo data matching the UI prototype.
  * Run with: npx tsx scripts/seed.ts
  */
+import { loadEnvConfig } from '@next/env';
+import path from 'path';
+loadEnvConfig(path.resolve(__dirname, '..'));
+
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../src/lib/db/schema';

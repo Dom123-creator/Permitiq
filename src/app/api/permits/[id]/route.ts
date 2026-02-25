@@ -32,6 +32,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (!current) return NextResponse.json({ error: 'Permit not found' }, { status: 404 });
 
     const allowedFields = [
+      'name', 'type', 'jurisdiction',
       'status', 'notes', 'expiryDate', 'feeBudgeted', 'feeActual',
       'permitNumber', 'authority', 'hearingDate', 'archived',
     ] as const;

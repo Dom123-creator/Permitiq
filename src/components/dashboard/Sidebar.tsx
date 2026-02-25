@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Stats {
   permitsTotal: number;
@@ -79,7 +79,8 @@ export function Sidebar() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadStats = useCallback(() => {
+    setLoading(true);
     fetch('/api/dashboard/stats')
       .then((r) => r.json())
       .then((data) => {
@@ -88,6 +89,15 @@ export function Sidebar() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { loadStats(); }, [loadStats]);
+
+  // Reload when wizard or other actions complete
+  useEffect(() => {
+    const handler = () => loadStats();
+    window.addEventListener('permitiq:refresh', handler);
+    return () => window.removeEventListener('permitiq:refresh', handler);
+  }, [loadStats]);
 
   const projects = stats?.projects ?? [];
   const expiringPermits = stats?.expiringPermits ?? [];

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { CreateTaskModal } from './CreateTaskModal';
+import { EditTaskModal } from './EditTaskModal';
 
 interface Task {
   id: string;
@@ -34,6 +36,8 @@ export function TaskManager() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -114,7 +118,7 @@ export function TaskManager() {
               <h2 className="text-lg font-semibold text-text">Task Manager</h2>
               <p className="text-sm text-muted">Manage manual and auto-generated tasks</p>
             </div>
-            <button className="btn btn-primary">+ Create Task</button>
+            <button onClick={() => setIsCreateModalOpen(true)} className="btn btn-primary">+ Create Task</button>
           </div>
 
           {isLoading && (
@@ -221,6 +225,28 @@ export function TaskManager() {
         </div>
       </div>
 
+      {/* Create Task Modal */}
+      {isCreateModalOpen && (
+        <CreateTaskModal
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={() => { setIsCreateModalOpen(false); loadTasks(); }}
+        />
+      )}
+
+      {/* Edit Task Modal */}
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask}
+          onClose={() => setEditingTask(null)}
+          onSuccess={() => {
+            setEditingTask(null);
+            // Sync the detail panel if the edited task is open
+            setSelectedTask(null);
+            loadTasks();
+          }}
+        />
+      )}
+
       {/* Task Detail Panel */}
       {selectedTask && (
         <div className="w-96">
@@ -288,7 +314,12 @@ export function TaskManager() {
                 >
                   {selectedTask.status === 'completed' ? 'Mark as Pending' : 'Mark as Complete'}
                 </button>
-                <button className="btn btn-secondary w-full">Edit Task</button>
+                <button
+                  onClick={() => setEditingTask(selectedTask)}
+                  className="btn btn-secondary w-full"
+                >
+                  Edit Task
+                </button>
                 <button
                   onClick={() => deleteTask(selectedTask.id)}
                   className="btn btn-ghost w-full text-danger"

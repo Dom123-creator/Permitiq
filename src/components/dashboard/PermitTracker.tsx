@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { DocumentPanel } from '@/components/documents';
 import { InspectionPanel } from '@/components/inspections';
+import { AddPermitModal, EditPermitModal } from '@/components/permits';
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 
 interface Permit {
   id: string;
@@ -18,6 +20,10 @@ interface Permit {
   inspectionCount: number;
   inspectionsPassed: number;
   expiryDate: Date | null;
+  projectId?: string | null;
+  authority?: string | null;
+  notes?: string | null;
+  feeBudgeted?: number | null;
 }
 
 // Helper to create dates relative to today
@@ -192,19 +198,32 @@ function getExpiryStatus(daysUntil: number | null): { label: string; class: stri
 }
 
 export function PermitTracker() {
-  const [permits, setPermits] = useState<Permit[]>(demoPermits);
-  const [isLoading, setIsLoading] = useState(true);
+  const [apiPermits, setApiPermits] = useState<Permit[] | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [selectedPermit, setSelectedPermit] = useState<Permit | null>(null);
   const [isDocPanelOpen, setIsDocPanelOpen] = useState(false);
   const [isInspectionPanelOpen, setIsInspectionPanelOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingPermit, setEditingPermit] = useState<Permit | null>(null);
+  const [taskingPermit, setTaskingPermit] = useState<Permit | null>(null);
 
-  useEffect(() => {
+  // Derived state
+  const isLoading = !isDemoMode && apiPermits === null;
+  const showEmptyState = !isDemoMode && apiPermits !== null && apiPermits.length === 0;
+
+  // Display list: demo data overrides; fall back to demo during load / on API error
+  const permits = useMemo(
+    () => (isDemoMode ? demoPermits : (apiPermits ?? demoPermits)),
+    [isDemoMode, apiPermits]
+  );
+
+  const loadPermits = useCallback(() => {
     fetch('/api/permits')
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          setPermits(
+          setApiPermits(
             data.map((p) => ({
               ...p,
               expiryDate: p.expiryDate ? new Date(p.expiryDate) : null,
@@ -212,9 +231,33 @@ export function PermitTracker() {
           );
         }
       })
-      .catch(() => { /* keep demo data on error */ })
-      .finally(() => setIsLoading(false));
+      .catch(() => { /* apiPermits stays null → permits falls back to demoPermits */ });
   }, []);
+
+  // Read demo mode preference from localStorage after hydration
+  useEffect(() => {
+    setIsDemoMode(localStorage.getItem('permitiq_demo_mode') === 'true');
+  }, []);
+
+  // Fetch real permits whenever demo mode is off
+  useEffect(() => {
+    if (!isDemoMode) loadPermits();
+  }, [isDemoMode, loadPermits]);
+
+  // Reload when wizard or other actions dispatch permitiq:refresh
+  useEffect(() => {
+    const handler = () => loadPermits();
+    window.addEventListener('permitiq:refresh', handler);
+    return () => window.removeEventListener('permitiq:refresh', handler);
+  }, [loadPermits]);
+
+  const toggleDemoMode = () => {
+    const next = !isDemoMode;
+    setIsDemoMode(next);
+    localStorage.setItem('permitiq_demo_mode', String(next));
+    // Reset apiPermits so loading indicator shows while refetching real data
+    if (!next) setApiPermits(null);
+  };
 
   // Search and filter state
   const [filters, setFilters] = useState<Filters>({
@@ -373,6 +416,18 @@ export function PermitTracker() {
     setSelectedPermit(null);
   };
 
+  const handleDelete = async (permit: Permit) => {
+    if (!window.confirm(`Archive "${permit.name}"? It will be removed from the tracker.`)) return;
+    try {
+      const res = await fetch(`/api/permits/${permit.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setApiPermits((prev) => (prev ? prev.filter((p) => p.id !== permit.id) : prev));
+      }
+    } catch {
+      // silent fail — permit stays in list
+    }
+  };
+
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
       return (
@@ -450,6 +505,14 @@ export function PermitTracker() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* New Permit button */}
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="btn btn-primary btn-sm"
+            >
+              + New Permit
+            </button>
+
             {/* Search Input */}
             <div className="relative">
               <svg
@@ -478,6 +541,20 @@ export function PermitTracker() {
                 </button>
               )}
             </div>
+
+            {/* Demo mode toggle */}
+            <button
+              onClick={toggleDemoMode}
+              title={isDemoMode ? 'Showing demo data — click to show real data' : 'Show sample demo data'}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                isDemoMode
+                  ? 'bg-accent/10 text-accent border-accent/30 hover:bg-accent/20'
+                  : 'text-muted border-border hover:text-text hover:border-muted'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isDemoMode ? 'bg-accent' : 'bg-muted'}`} />
+              Demo
+            </button>
 
             {/* Filter Toggle */}
             <button
@@ -677,7 +754,31 @@ export function PermitTracker() {
           <div className="px-4 py-8 text-center text-sm text-muted animate-pulse">Loading permits...</div>
         )}
 
-        <div className="overflow-x-auto">
+        {/* Empty state — shown when DB is connected but no permits exist yet */}
+        {showEmptyState && (
+          <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-surface2 border border-border flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-semibold text-text mb-2">No permits yet</h3>
+            <p className="text-sm text-muted mb-6 max-w-xs">
+              Add your first permit to start tracking. PermitIQ will monitor status, flag deadlines, and auto-create tasks.
+            </p>
+            <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary">
+              Add your first permit
+            </button>
+            <button
+              onClick={toggleDemoMode}
+              className="mt-3 text-xs text-muted hover:text-accent transition-colors"
+            >
+              Or explore with demo data →
+            </button>
+          </div>
+        )}
+
+        {!showEmptyState && <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
@@ -770,7 +871,7 @@ export function PermitTracker() {
                   const expiryStatus = getExpiryStatus(daysUntilExpiry);
 
                   return (
-                    <tr key={permit.id} className="border-b border-border hover:bg-surface2 transition-colors">
+                    <tr key={permit.id} className="border-b border-border hover:bg-surface2 transition-colors group">
                       <td className="px-4 py-3">
                         <div>
                           <div className="text-sm font-medium text-text">{permit.name}</div>
@@ -850,7 +951,32 @@ export function PermitTracker() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button className="btn btn-ghost btn-sm">Ask Agent</button>
-                          <button className="btn btn-secondary btn-sm">+ Task</button>
+                          <button
+                            onClick={() => setTaskingPermit(permit)}
+                            className="btn btn-secondary btn-sm"
+                          >
+                            + Task
+                          </button>
+                          {/* Edit button — visible on row hover */}
+                          <button
+                            onClick={() => setEditingPermit(permit)}
+                            className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-surface2 opacity-0 group-hover:opacity-100 transition-all"
+                            title="Edit permit"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          {/* Delete/archive button — visible on row hover */}
+                          <button
+                            onClick={() => handleDelete(permit)}
+                            className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10 opacity-0 group-hover:opacity-100 transition-all"
+                            title="Archive permit"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -859,7 +985,7 @@ export function PermitTracker() {
               )}
             </tbody>
           </table>
-        </div>
+        </div>}
 
         {/* Results Summary */}
         {filteredPermits.length > 0 && (
@@ -892,6 +1018,33 @@ export function PermitTracker() {
           permitType={selectedPermit.type}
           isOpen={isInspectionPanelOpen}
           onClose={closeInspections}
+        />
+      )}
+
+      {/* Create Task Modal — opened from permit row "+ Task" button */}
+      {taskingPermit && (
+        <CreateTaskModal
+          defaultPermitId={taskingPermit.id}
+          defaultProjectId={taskingPermit.projectId ?? ''}
+          onClose={() => setTaskingPermit(null)}
+          onSuccess={() => setTaskingPermit(null)}
+        />
+      )}
+
+      {/* Add Permit Modal */}
+      {isAddModalOpen && (
+        <AddPermitModal
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={() => { setIsAddModalOpen(false); loadPermits(); }}
+        />
+      )}
+
+      {/* Edit Permit Modal */}
+      {editingPermit && (
+        <EditPermitModal
+          permit={editingPermit}
+          onClose={() => setEditingPermit(null)}
+          onSuccess={() => { setEditingPermit(null); loadPermits(); }}
         />
       )}
     </>

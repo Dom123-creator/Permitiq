@@ -2,6 +2,7 @@ import { Header } from '@/components/dashboard/Header';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { PermitTracker } from '@/components/dashboard/PermitTracker';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { OnboardingController } from '@/components/onboarding/OnboardingController';
 
 export default function DashboardPage() {
   return (
@@ -14,6 +15,7 @@ export default function DashboardPage() {
         </main>
         <ChatPanel />
       </div>
+      <OnboardingController />
     </div>
   );
 }
