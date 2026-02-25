@@ -67,6 +67,8 @@ export async function GET(request: NextRequest) {
         notes: permits.notes,
         archived: permits.archived,
         projectId: permits.projectId,
+        submissionStatus: permits.submissionStatus,
+        submissionDeadline: permits.submissionDeadline,
         projectName: projects.name,
         createdAt: permits.createdAt,
         documentCount: sql<number>`cast(count(distinct ${documents.id}) as int)`,

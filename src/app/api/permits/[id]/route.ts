@@ -43,6 +43,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       'name', 'type', 'jurisdiction',
       'status', 'notes', 'expiryDate', 'feeBudgeted', 'feeActual',
       'permitNumber', 'authority', 'hearingDate', 'archived',
+      'submissionStatus', 'submissionDeadline', 'correctionNotes',
     ] as const;
 
     // Build update payload from allowed fields only
@@ -68,6 +69,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         action: 'status_changed',
         oldValue: current.status,
         newValue: body.status,
+      });
+    }
+
+    // Write audit entry for submission status changes
+    if (body.submissionStatus && body.submissionStatus !== current.submissionStatus) {
+      await db.insert(auditLog).values({
+        permitId: id,
+        actorType: 'user',
+        actorId: session.user.id,
+        action: 'submission_status_changed',
+        oldValue: current.submissionStatus ?? 'draft',
+        newValue: body.submissionStatus,
       });
     }
 

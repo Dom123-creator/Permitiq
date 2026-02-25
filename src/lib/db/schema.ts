@@ -31,6 +31,9 @@ export const permits = pgTable('permits', {
   archived: boolean('archived').default(false),
   hearingDate: timestamp('hearing_date'),
   procoreItemId: text('procore_item_id'),
+  submissionStatus: text('submission_status').notNull().default('draft'), // draft | submitted | under-review | corrections-required | approved
+  submissionDeadline: timestamp('submission_deadline'),
+  correctionNotes: text('correction_notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -165,5 +168,19 @@ export const fees = pgTable('fees', {
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
   paidAt: timestamp('paid_at'),
   receiptUrl: text('receipt_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Submission checklist items table
+export const checklistItems = pgTable('checklist_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  permitId: uuid('permit_id').references(() => permits.id, { onDelete: 'cascade' }).notNull(),
+  label: text('label').notNull(),
+  category: text('category').notNull().default('documents'), // documents | fees | steps
+  required: boolean('required').default(true).notNull(),
+  completed: boolean('completed').default(false).notNull(),
+  completedAt: timestamp('completed_at'),
+  completedBy: text('completed_by'),
+  sortOrder: integer('sort_order').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

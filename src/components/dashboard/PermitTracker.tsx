@@ -5,6 +5,7 @@ import { DocumentPanel } from '@/components/documents';
 import { InspectionPanel } from '@/components/inspections';
 import { FeePanel } from '@/components/costs';
 import { AddPermitModal, EditPermitModal } from '@/components/permits';
+import { SubmissionPanel } from '@/components/permits/SubmissionPanel';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 
 interface Permit {
@@ -26,6 +27,8 @@ interface Permit {
   authority?: string | null;
   notes?: string | null;
   feeBudgeted?: number | null;
+  submissionStatus?: string | null;
+  submissionDeadline?: string | null;
 }
 
 // Helper to create dates relative to today
@@ -52,6 +55,7 @@ const demoPermits: Permit[] = [
     feeCount: 2,
     expiryDate: daysFromNow(45),
     feeBudgeted: 3200,
+    submissionStatus: 'under-review',
   },
   {
     id: '2',
@@ -69,6 +73,7 @@ const demoPermits: Permit[] = [
     feeCount: 1,
     expiryDate: daysFromNow(15),
     feeBudgeted: 1850,
+    submissionStatus: 'corrections-required',
   },
   {
     id: '3',
@@ -86,6 +91,7 @@ const demoPermits: Permit[] = [
     feeCount: 1,
     expiryDate: daysFromNow(120),
     feeBudgeted: 950,
+    submissionStatus: 'approved',
   },
   {
     id: '4',
@@ -103,6 +109,7 @@ const demoPermits: Permit[] = [
     feeCount: 0,
     expiryDate: daysFromNow(7),
     feeBudgeted: 2100,
+    submissionStatus: 'draft',
   },
   {
     id: '5',
@@ -120,6 +127,7 @@ const demoPermits: Permit[] = [
     feeCount: 1,
     expiryDate: null,
     feeBudgeted: 750,
+    submissionStatus: 'submitted',
   },
   {
     id: '6',
@@ -137,6 +145,7 @@ const demoPermits: Permit[] = [
     feeCount: 3,
     expiryDate: daysFromNow(25),
     feeBudgeted: 4400,
+    submissionStatus: 'under-review',
   },
   {
     id: '7',
@@ -154,6 +163,7 @@ const demoPermits: Permit[] = [
     feeCount: 0,
     expiryDate: daysFromNow(90),
     feeBudgeted: 1200,
+    submissionStatus: 'draft',
   },
 ];
 
@@ -224,6 +234,7 @@ export function PermitTracker() {
   const [editingPermit, setEditingPermit] = useState<Permit | null>(null);
   const [taskingPermit, setTaskingPermit] = useState<Permit | null>(null);
   const [feePermit, setFeePermit] = useState<Permit | null>(null);
+  const [submissionPermit, setSubmissionPermit] = useState<Permit | null>(null);
 
   // Derived state
   const isLoading = !isDemoMode && apiPermits === null;
@@ -437,6 +448,13 @@ export function PermitTracker() {
     setFeePermit(permit);
     setIsDocPanelOpen(false);
     setIsInspectionPanelOpen(false);
+  };
+
+  const openSubmission = (permit: Permit) => {
+    setSubmissionPermit(permit);
+    setIsDocPanelOpen(false);
+    setIsInspectionPanelOpen(false);
+    setFeePermit(null);
   };
 
   const handleDelete = async (permit: Permit) => {
@@ -859,6 +877,9 @@ export function PermitTracker() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">
                   Fees
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">
+                  Submit
+                </th>
                 <th
                   onClick={() => handleSort('status')}
                   className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide cursor-pointer hover:text-text group"
@@ -876,7 +897,7 @@ export function PermitTracker() {
             <tbody>
               {filteredPermits.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center">
+                  <td colSpan={11} className="px-4 py-12 text-center">
                     <div className="text-muted">
                       <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -994,6 +1015,40 @@ export function PermitTracker() {
                         </button>
                       </td>
                       <td className="px-4 py-3">
+                        <button
+                          onClick={() => openSubmission(permit)}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface2 hover:bg-border transition-colors group"
+                          title="Submission workflow"
+                        >
+                          <svg
+                            className="w-4 h-4 text-muted group-hover:text-accent"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                            />
+                          </svg>
+                          <span className={`text-xs font-medium ${
+                            permit.submissionStatus === 'approved' ? 'text-success' :
+                            permit.submissionStatus === 'corrections-required' ? 'text-warn' :
+                            permit.submissionStatus === 'submitted' || permit.submissionStatus === 'under-review' ? 'text-accent' :
+                            'text-muted'
+                          }`}>
+                            {permit.submissionStatus === 'draft' ? 'Draft' :
+                             permit.submissionStatus === 'submitted' ? 'Submitted' :
+                             permit.submissionStatus === 'under-review' ? 'Review' :
+                             permit.submissionStatus === 'corrections-required' ? 'Corrections' :
+                             permit.submissionStatus === 'approved' ? 'Approved' :
+                             'Draft'}
+                          </span>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
                         <span className={`badge ${statusConfig[permit.status].class}`}>
                           {statusConfig[permit.status].label}
                         </span>
@@ -1079,6 +1134,25 @@ export function PermitTracker() {
           feeBudgeted={feePermit.feeBudgeted}
           isOpen={!!feePermit}
           onClose={() => setFeePermit(null)}
+        />
+      )}
+
+      {/* Submission Panel */}
+      {submissionPermit && (
+        <SubmissionPanel
+          permitId={submissionPermit.id}
+          permitName={submissionPermit.name}
+          permitType={submissionPermit.type}
+          submissionStatus={(submissionPermit.submissionStatus ?? 'draft') as 'draft' | 'submitted' | 'under-review' | 'corrections-required' | 'approved'}
+          submissionDeadline={submissionPermit.submissionDeadline ?? null}
+          isOpen={!!submissionPermit}
+          onClose={() => setSubmissionPermit(null)}
+          onStatusChange={(newStatus) => {
+            setSubmissionPermit((p) => p ? { ...p, submissionStatus: newStatus } : null);
+            setApiPermits((prev) =>
+              prev ? prev.map((p) => p.id === submissionPermit.id ? { ...p, submissionStatus: newStatus } : p) : prev
+            );
+          }}
         />
       )}
 
