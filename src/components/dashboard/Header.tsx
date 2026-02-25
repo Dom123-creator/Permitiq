@@ -10,6 +10,7 @@ const navItems = [
   { name: 'Permits', href: '/permits' },
   { name: 'Inspections', href: '/inspections' },
   { name: 'Costs', href: '/costs' },
+  { name: 'Analytics', href: '/analytics' },
   { name: 'Emails', href: '/emails' },
   { name: 'Tasks', href: '/tasks' },
   { name: 'Rules', href: '/rules' },
