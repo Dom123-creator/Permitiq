@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, emailDrafts } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -8,6 +9,9 @@ interface RouteParams {
 
 // PATCH /api/emails/[id] — update status, subject, body, recipient, etc.
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   const { id } = await params;
   try {
     const body = await request.json();

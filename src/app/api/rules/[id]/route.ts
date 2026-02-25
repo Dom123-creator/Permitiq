@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, rules } from '@/lib/db';
+import { requireRole } from '@/lib/auth/guards';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// PATCH /api/rules/[id] — update enabled toggle or other fields
+// PATCH /api/rules/[id] — update enabled toggle or other fields (admin/owner only)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const sessionOrError = await requireRole(['owner', 'admin']);
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   const { id } = await params;
   try {
     const body = await request.json();

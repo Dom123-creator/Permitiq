@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { eq, and } from 'drizzle-orm';
 import { getDb, projects, permits } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 const JURISDICTION_AVG: Record<string, number> = {
   Houston: 15,
@@ -22,6 +23,9 @@ function computeDaysInQueue(submittedAt: Date | null, stored: number | null): nu
 
 // GET /api/costs — all projects with per-permit delay cost data
 export async function GET() {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const db = getDb();
 

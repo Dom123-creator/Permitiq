@@ -8,6 +8,8 @@ loadEnvConfig(path.resolve(__dirname, '..'));
 
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import bcrypt from 'bcryptjs';
+import { eq } from 'drizzle-orm';
 import * as schema from '../src/lib/db/schema';
 
 const {
@@ -24,11 +26,32 @@ const db = drizzle(client, { schema });
 async function seed() {
   console.log('🌱 Seeding database...');
 
-  // Users
+  // Owner user — upsert so re-running seed doesn't fail
+  const ownerHash = await bcrypt.hash('permitiq-dev', 12);
+  const [owner] = await db.insert(users).values({
+    name: 'Admin User',
+    email: 'admin@permitiq.dev',
+    role: 'owner',
+    passwordHash: ownerHash,
+    isActive: true,
+  }).onConflictDoUpdate({
+    target: users.email,
+    set: { passwordHash: ownerHash, isActive: true, role: 'owner' },
+  }).returning();
+
+  console.log('✓ Owner user (admin@permitiq.dev / permitiq-dev)');
+
+  // PM users — upsert so re-running seed doesn't fail
   const [pm1, pm2] = await db.insert(users).values([
-    { name: 'Sarah Chen', email: 'sarah@permitiq.dev', role: 'pm' },
-    { name: 'Marcus Williams', email: 'marcus@permitiq.dev', role: 'pm' },
-  ]).returning();
+    { name: 'Sarah Chen', email: 'sarah@permitiq.dev', role: 'pm', isActive: true },
+    { name: 'Marcus Williams', email: 'marcus@permitiq.dev', role: 'pm', isActive: true },
+  ]).onConflictDoUpdate({
+    target: users.email,
+    set: { isActive: true },
+  }).returning();
+
+  // Suppress unused owner reference
+  void owner;
 
   console.log('✓ Users');
 

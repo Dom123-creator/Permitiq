@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'admin' | 'pm' | 'superintendent' | 'viewer';
+export type UserRole = 'owner' | 'admin' | 'pm' | 'superintendent' | 'teammate';
 
 export interface User {
   id: string;
@@ -63,8 +63,8 @@ export const roleConfig: Record<UserRole, {
     color: 'text-warn',
     permissions: ['view_permits', 'view_inspections', 'update_inspections'],
   },
-  viewer: {
-    label: 'View Only',
+  teammate: {
+    label: 'Teammate',
     description: 'Read-only access to assigned projects',
     color: 'text-muted',
     permissions: ['view_permits', 'view_tasks', 'view_inspections'],

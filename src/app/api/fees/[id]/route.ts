@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, fees } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 // PATCH /api/fees/[id] — update fee (mark paid, change amount/type)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const body = await request.json();
     const db = getDb();
@@ -49,6 +53,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const db = getDb();
 

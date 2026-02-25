@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, and, ne, or } from 'drizzle-orm';
 import { getDb, emailDrafts, permits, projects } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 // GET /api/emails?status=active|sent|all
 export async function GET(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('status') ?? 'active'; // active | sent | all
@@ -53,6 +57,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/emails — create a new draft
 export async function POST(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const body = await request.json();
     const {

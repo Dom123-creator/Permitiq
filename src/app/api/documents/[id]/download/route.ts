@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, documents } from '@/lib/db';
 import { getDownloadUrl } from '@/lib/storage/r2';
+import { requireAuth } from '@/lib/auth/guards';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -9,6 +10,9 @@ interface RouteParams {
 
 // GET /api/documents/[id]/download - Get a presigned download URL (1h TTL)
 export async function GET(_request: NextRequest, { params }: RouteParams) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   const { id } = await params;
 
   try {

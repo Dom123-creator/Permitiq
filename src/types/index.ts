@@ -114,7 +114,7 @@ export interface AuditLogEntry {
 }
 
 // User types
-export type UserRole = 'owner' | 'admin' | 'pm' | 'superintendent';
+export type UserRole = 'owner' | 'admin' | 'pm' | 'superintendent' | 'teammate';
 
 export interface User {
   id: string;
@@ -153,6 +153,45 @@ export interface Fee {
   paidAt: Date | null;
   receiptUrl: string | null;
   createdAt: Date;
+}
+
+// Integration types
+export interface Integration {
+  id: string;
+  userId: string;
+  provider: 'procore' | 'buildertrend' | 'zapier';
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiresAt: Date | null;
+  providerData: string | null; // JSON string
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProcoreCompany {
+  id: number;
+  name: string;
+}
+
+export interface ProcoreProject {
+  id: number;
+  name: string;
+  status: string;
+}
+
+export interface SyncResult {
+  projectsCreated: number;
+  projectsUpdated: number;
+  permitsCreated: number;
+  permitsUpdated: number;
+  errors: string[];
+}
+
+export interface BuildertrendImportResult {
+  projectsCreated: number;
+  permitsCreated: number;
+  skipped: number;
+  errors: string[];
 }
 
 // Chat types

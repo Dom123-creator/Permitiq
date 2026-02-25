@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { eq, and, gte } from 'drizzle-orm';
 import { getDb, rules, permits, projects, tasks, auditLog, emailDrafts } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 const JURISDICTION_CONTACTS: Record<string, { email: string; name: string }> = {
   Houston: { email: 'permits@houstontx.gov', name: 'City of Houston Permit Office' },
@@ -44,6 +45,9 @@ interface FiredRule {
 
 // POST /api/rules/run — evaluate all enabled rules against active permits
 export async function POST() {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const db = getDb();
     const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000);

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc } from 'drizzle-orm';
 import { getDb, fees, permits } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 // GET /api/fees?permitId=<uuid>
 export async function GET(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const { searchParams } = new URL(request.url);
     const permitId = searchParams.get('permitId');
@@ -32,6 +36,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/fees — create a new fee entry
 export async function POST(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const body = await request.json();
     const { permitId, type, amount, paidAt, receiptUrl } = body;

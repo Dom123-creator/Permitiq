@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq, desc, sql, and } from 'drizzle-orm';
-import { getDb, permits, projects, documents, inspections, fees } from '@/lib/db';
+import { eq, desc, sql, and, inArray } from 'drizzle-orm';
+import { getDb, permits, projects, documents, inspections, fees, projectMembers } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 // Jurisdiction average review days — used to colour-code days-in-queue
 const JURISDICTION_AVG: Record<string, number> = {
@@ -26,6 +27,10 @@ function computeDaysInQueue(submittedAt: Date | null, stored: number | null): nu
 
 // GET /api/permits?projectId=&status=&archived=false
 export async function GET(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+  const session = sessionOrError;
+
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
@@ -33,6 +38,17 @@ export async function GET(request: NextRequest) {
     const showArchived = searchParams.get('archived') === 'true';
 
     const db = getDb();
+
+    // Project scoping for non-admin/owner roles
+    let scopedProjectIds: string[] | null = null;
+    if (!['owner', 'admin'].includes(session.user.role)) {
+      const memberships = await db
+        .select({ projectId: projectMembers.projectId })
+        .from(projectMembers)
+        .where(eq(projectMembers.userId, session.user.id));
+      scopedProjectIds = memberships.map((m) => m.projectId);
+      if (scopedProjectIds.length === 0) return NextResponse.json([]);
+    }
 
     const rows = await db
       .select({
@@ -68,6 +84,7 @@ export async function GET(request: NextRequest) {
           eq(permits.archived, showArchived),
           projectId ? eq(permits.projectId, projectId) : undefined,
           status ? eq(permits.status, status) : undefined,
+          scopedProjectIds ? inArray(permits.projectId, scopedProjectIds) : undefined,
         )
       )
       .groupBy(permits.id, projects.name)
@@ -93,6 +110,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/permits — create a new permit
 export async function POST(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const body = await request.json();
     const { projectId, name, type, jurisdiction, authority, permitNumber, notes, feeBudgeted, expiryDate } = body;

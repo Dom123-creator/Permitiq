@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { desc } from 'drizzle-orm';
 import { getDb, rules } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 // GET /api/rules — list all rules ordered by creation
 export async function GET() {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const db = getDb();
     const rows = await db.select().from(rules).orderBy(desc(rules.createdAt));

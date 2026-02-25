@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc, and } from 'drizzle-orm';
 import { getDb, auditLog, permits, projects, users } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 function buildDescription(
   action: string,
@@ -43,6 +44,9 @@ function buildActorName(
 
 // GET /api/audit?permitId=&actorType=&action=&limit=100&offset=0
 export async function GET(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const { searchParams } = new URL(request.url);
     const permitId = searchParams.get('permitId');

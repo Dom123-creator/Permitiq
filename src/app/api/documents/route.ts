@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc } from 'drizzle-orm';
 import { getDb, documents } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 // GET /api/documents?permitId=<id> - List documents for a permit
 export async function GET(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
   const { searchParams } = new URL(request.url);
   const permitId = searchParams.get('permitId');
 

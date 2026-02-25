@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, boolean, decimal, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, boolean, decimal, uuid, unique } from 'drizzle-orm/pg-core';
 
 // Projects table
 export const projects = pgTable('projects', {
@@ -7,6 +7,7 @@ export const projects = pgTable('projects', {
   client: text('client'),
   status: text('status').notNull().default('active'), // active, on-hold, completed
   dailyCarryingCost: decimal('daily_carrying_cost', { precision: 10, scale: 2 }),
+  procoreId: text('procore_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -29,6 +30,7 @@ export const permits = pgTable('permits', {
   notes: text('notes'),
   archived: boolean('archived').default(false),
   hearingDate: timestamp('hearing_date'),
+  procoreItemId: text('procore_item_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -107,11 +109,36 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  role: text('role').notNull().default('pm'), // owner, admin, pm, superintendent
+  role: text('role').notNull().default('pm'), // owner, admin, pm, superintendent, teammate
   teamId: uuid('team_id'),
+  passwordHash: text('password_hash'),
+  inviteToken: text('invite_token'),
+  inviteExpiry: timestamp('invite_expiry'),
+  isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// Project members table (project-level access scoping)
+export const projectMembers = pgTable('project_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Integrations table (OAuth tokens for Procore, Buildertrend, Zapier)
+export const integrations = pgTable('integrations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  provider: text('provider').notNull(), // procore | buildertrend | zapier
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  expiresAt: timestamp('expires_at'),
+  providerData: text('provider_data'), // JSON string (companyId, lastSync, etc.)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => ({ userProviderUnique: unique().on(t.userId, t.provider) }));
 
 // Email drafts table
 export const emailDrafts = pgTable('email_drafts', {

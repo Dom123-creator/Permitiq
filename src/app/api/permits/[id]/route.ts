@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, permits, auditLog } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -8,6 +9,9 @@ interface RouteParams {
 
 // GET /api/permits/[id]
 export async function GET(_req: NextRequest, { params }: RouteParams) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   const { id } = await params;
   try {
     const db = getDb();
@@ -22,6 +26,10 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/permits/[id] — update status, notes, expiry, fees, etc.
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+  const session = sessionOrError;
+
   const { id } = await params;
   try {
     const body = await request.json();
@@ -56,6 +64,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       await db.insert(auditLog).values({
         permitId: id,
         actorType: 'user',
+        actorId: session.user.id,
         action: 'status_changed',
         oldValue: current.status,
         newValue: body.status,
@@ -71,6 +80,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/permits/[id] — soft delete (archive)
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+  const session = sessionOrError;
+
   const { id } = await params;
   try {
     const db = getDb();
@@ -85,6 +98,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
     await db.insert(auditLog).values({
       permitId: id,
       actorType: 'user',
+      actorId: session.user.id,
       action: 'permit_archived',
       newValue: 'archived',
     });

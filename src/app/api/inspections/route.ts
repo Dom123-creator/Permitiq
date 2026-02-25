@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { getDb, inspections, permits, projects } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 // GET /api/inspections?permitId=&upcoming=true
 export async function GET(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const { searchParams } = new URL(request.url);
     const permitId = searchParams.get('permitId');
@@ -52,6 +56,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/inspections — schedule a new inspection
 export async function POST(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const body = await request.json();
     const { permitId, type, scheduledDate, inspectorName, inspectorContact, notes } = body;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadFile } from '@/lib/storage/r2';
 import { getDb, documents } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/guards';
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -14,6 +15,9 @@ const MAX_SIZE = 25 * 1024 * 1024; // 25MB
 
 // POST /api/documents/upload - Upload a document
 export async function POST(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

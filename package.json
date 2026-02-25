@@ -29,14 +29,18 @@
     "@anthropic-ai/sdk": "^0.78.0",
     "@aws-sdk/client-s3": "^3.995.0",
     "@aws-sdk/s3-request-presigner": "^3.995.0",
+    "bcryptjs": "^3.0.3",
+    "csv-parse": "^6.1.0",
     "drizzle-orm": "^0.45.1",
     "next": "^14.2.35",
+    "next-auth": "^5.0.0-beta.25",
     "postgres": "^3.4.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.3.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

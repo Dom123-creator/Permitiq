@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { requireAuth } from '@/lib/auth/guards';
 
 const SYSTEM_PROMPT = `You are PermitIQ's AI permit intelligence agent. You help construction project managers track and manage commercial building permits across multiple jurisdictions in the US.
 
@@ -23,6 +24,9 @@ interface ConversationMessage {
 }
 
 export async function POST(request: NextRequest) {
+  const sessionOrError = await requireAuth();
+  if (sessionOrError instanceof NextResponse) return sessionOrError;
+
   try {
     const { message, history } = await request.json() as {
       message: string;
