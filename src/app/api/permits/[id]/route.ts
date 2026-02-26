@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, permits, auditLog } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
+import { deliverWebhookEvent } from '@/lib/webhooks/deliver';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -70,6 +71,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         oldValue: current.status,
         newValue: body.status,
       });
+
+      // Fire webhook event (fire-and-forget)
+      const eventType = body.status === 'approved' ? 'permit.approved' : 'permit.updated';
+      void Promise.allSettled([deliverWebhookEvent(eventType, {
+        permitId: id,
+        status: body.status,
+        previousStatus: current.status,
+        updatedBy: session.user.id,
+      })]);
     }
 
     // Write audit entry for submission status changes

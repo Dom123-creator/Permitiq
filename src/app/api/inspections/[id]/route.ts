@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, inspections, tasks, auditLog } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
+import { deliverWebhookEvent } from '@/lib/webhooks/deliver';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -68,6 +69,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         oldValue: existing.result ?? 'scheduled',
         newValue: body.result,
       });
+
+      // Fire webhook event (fire-and-forget)
+      void Promise.allSettled([deliverWebhookEvent('inspection.result', {
+        inspectionId: id,
+        permitId: existing.permitId,
+        type: existing.type,
+        result: body.result,
+        previousResult: existing.result,
+      })]);
     }
 
     return NextResponse.json(updated);

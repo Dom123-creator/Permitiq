@@ -29,23 +29,73 @@ function getInitials(name: string): string {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
+type Branding = { companyName: string; primaryColor: string; logoUrl: string | null };
+
+function useBranding(): Branding {
+  const [branding, setBranding] = useState<Branding>({ companyName: 'PermitIQ', primaryColor: '#00e5ff', logoUrl: null });
+  useEffect(() => {
+    fetch('/api/settings/branding')
+      .then((r) => r.json())
+      .then((d) => setBranding(d))
+      .catch(() => {});
+  }, []);
+  return branding;
+}
+
+function BrandedLogo({ branding }: { branding: Branding }) {
+  if (branding.logoUrl) {
+    // For R2 keys, we'd need a presigned URL — show fallback with key name instead
+    return (
+      <div className="flex items-center gap-2">
+        <div
+          className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: branding.primaryColor }}
+        >
+          <span className="text-bg font-bold text-sm">{branding.companyName.charAt(0).toUpperCase()}</span>
+        </div>
+        <span className="text-lg md:text-xl font-semibold text-text">{branding.companyName}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ backgroundColor: branding.primaryColor }}
+      >
+        <span className="text-bg font-bold text-sm">{branding.companyName.charAt(0).toUpperCase()}</span>
+      </div>
+      <span className="text-lg md:text-xl font-semibold text-text">{branding.companyName}</span>
+    </div>
+  );
+}
+
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const branding = useBranding();
   const [menuOpen, setMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
 
+  const isOwner = session?.user?.role === 'owner';
   const isAdminOrOwner = session?.user?.role === 'owner' || session?.user?.role === 'admin';
 
   const allNavItems = [
     ...navItems,
-    ...(isAdminOrOwner ? [{ name: 'Team', href: '/team' }, { name: 'Integrations', href: '/integrations' }] : []),
+    ...(isAdminOrOwner
+      ? [
+          { name: 'Team', href: '/team' },
+          { name: 'Integrations', href: '/integrations' },
+          { name: 'Developer', href: '/developer' },
+        ]
+      : []),
+    ...(isOwner ? [{ name: 'Settings', href: '/settings' }] : []),
   ];
 
-  // Close user menu on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -56,7 +106,6 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close mobile nav on route change
   useEffect(() => {
     setNavOpen(false);
   }, [pathname]);
@@ -88,10 +137,7 @@ export function Header() {
             )}
           </button>
 
-          <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-bg font-bold text-sm">P</span>
-          </div>
-          <span className="text-lg md:text-xl font-semibold text-text">PermitIQ</span>
+          <BrandedLogo branding={branding} />
         </div>
 
         {/* Desktop Navigation */}
@@ -126,6 +172,14 @@ export function Header() {
                 }`}
               >
                 Integrations
+              </Link>
+              <Link
+                href="/developer"
+                className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  pathname === '/developer' ? 'bg-surface2 text-accent' : 'text-muted hover:text-text hover:bg-surface2'
+                }`}
+              >
+                Developer
               </Link>
             </>
           )}
@@ -183,7 +237,23 @@ export function Header() {
                         >
                           Integrations
                         </Link>
+                        <Link
+                          href="/developer"
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-text hover:bg-surface2 transition-colors"
+                        >
+                          Developer
+                        </Link>
                       </>
+                    )}
+                    {isOwner && (
+                      <Link
+                        href="/settings"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-text hover:bg-surface2 transition-colors"
+                      >
+                        Settings
+                      </Link>
                     )}
                     <button
                       onClick={handleSignOut}

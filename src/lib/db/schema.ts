@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, boolean, decimal, uuid, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, boolean, decimal, uuid, unique, primaryKey } from 'drizzle-orm/pg-core';
 
 // Projects table
 export const projects = pgTable('projects', {
@@ -112,6 +112,7 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
+  emailVerified: timestamp('email_verified'),
   role: text('role').notNull().default('pm'), // owner, admin, pm, superintendent, teammate
   teamId: uuid('team_id'),
   passwordHash: text('password_hash'),
@@ -183,4 +184,70 @@ export const checklistItems = pgTable('checklist_items', {
   completedBy: text('completed_by'),
   sortOrder: integer('sort_order').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// OAuth accounts table — required by @auth/drizzle-adapter for Google/Microsoft SSO
+export const accounts = pgTable('accounts', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  provider: text('provider').notNull(),
+  providerAccountId: text('provider_account_id').notNull(),
+  refresh_token: text('refresh_token'),
+  access_token: text('access_token'),
+  expires_at: integer('expires_at'),
+  token_type: text('token_type'),
+  scope: text('scope'),
+  id_token: text('id_token'),
+  session_state: text('session_state'),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.provider, t.providerAccountId] }),
+}));
+
+// API keys table — for Open REST API authentication
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  keyHash: text('key_hash').notNull(),       // SHA-256 of the raw key
+  keyPrefix: text('key_prefix').notNull(),   // First 8 chars for display: "piq_ab12"
+  scopes: text('scopes').notNull().default('read'), // 'read' | 'read,write'
+  lastUsedAt: timestamp('last_used_at'),
+  revokedAt: timestamp('revoked_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Registered webhooks — outgoing webhook subscriptions
+export const registeredWebhooks = pgTable('registered_webhooks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  url: text('url').notNull(),
+  events: text('events').notNull(), // JSON array string: ["permit.updated","task.created"]
+  secret: text('secret').notNull(), // HMAC secret (auto-generated, shown once)
+  active: boolean('active').default(true).notNull(),
+  lastDeliveryAt: timestamp('last_delivery_at'),
+  failureCount: integer('failure_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Webhook delivery log
+export const webhookDeliveries = pgTable('webhook_deliveries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  webhookId: uuid('webhook_id').references(() => registeredWebhooks.id, { onDelete: 'cascade' }).notNull(),
+  event: text('event').notNull(),
+  payload: text('payload').notNull(),
+  responseStatus: integer('response_status'),
+  responseBody: text('response_body'),
+  success: boolean('success').default(false).notNull(),
+  attemptedAt: timestamp('attempted_at').defaultNow().notNull(),
+});
+
+// Workspace branding settings — single-row table
+export const workspaceSettings = pgTable('workspace_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyName: text('company_name').notNull().default('PermitIQ'),
+  logoUrl: text('logo_url'),                              // R2 key or null
+  primaryColor: text('primary_color').default('#00e5ff'), // CSS hex
+  faviconUrl: text('favicon_url'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => users.id),
 });

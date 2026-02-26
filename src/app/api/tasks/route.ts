@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc, and } from 'drizzle-orm';
 import { getDb, tasks, projects, permits, users, rules } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
+import { deliverWebhookEvent } from '@/lib/webhooks/deliver';
 
 // GET /api/tasks?projectId=&status=&type=
 export async function GET(request: NextRequest) {
@@ -89,6 +90,16 @@ export async function POST(request: NextRequest) {
         assignee: assigneeId ?? null,
       })
       .returning();
+
+    // Fire webhook event (fire-and-forget)
+    void Promise.allSettled([deliverWebhookEvent('task.created', {
+      taskId: task.id,
+      title: task.title,
+      type: task.type,
+      priority: task.priority,
+      projectId: task.projectId,
+      permitId: task.permitId,
+    })]);
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
