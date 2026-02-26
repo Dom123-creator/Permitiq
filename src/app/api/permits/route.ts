@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc, sql, and, inArray } from 'drizzle-orm';
-import { getDb, permits, projects, documents, inspections, fees, projectMembers } from '@/lib/db';
+import { getDb, permits, projects, documents, inspections, fees, projectMembers, checklistItems } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
 
 // Jurisdiction average review days — used to colour-code days-in-queue
@@ -75,12 +75,15 @@ export async function GET(request: NextRequest) {
         inspectionCount: sql<number>`cast(count(distinct ${inspections.id}) as int)`,
         inspectionsPassed: sql<number>`cast(count(distinct case when ${inspections.result} = 'pass' then ${inspections.id} end) as int)`,
         feeCount: sql<number>`cast(count(distinct ${fees.id}) as int)`,
+        checklistTotal: sql<number>`cast(count(distinct case when ${checklistItems.required} = true then ${checklistItems.id} end) as int)`,
+        checklistDone: sql<number>`cast(count(distinct case when ${checklistItems.required} = true and ${checklistItems.completed} = true then ${checklistItems.id} end) as int)`,
       })
       .from(permits)
       .leftJoin(projects, eq(permits.projectId, projects.id))
       .leftJoin(documents, eq(documents.permitId, permits.id))
       .leftJoin(inspections, eq(inspections.permitId, permits.id))
       .leftJoin(fees, eq(fees.permitId, permits.id))
+      .leftJoin(checklistItems, eq(checklistItems.permitId, permits.id))
       .where(
         and(
           eq(permits.archived, showArchived),
@@ -89,7 +92,7 @@ export async function GET(request: NextRequest) {
           scopedProjectIds ? inArray(permits.projectId, scopedProjectIds) : undefined,
         )
       )
-      .groupBy(permits.id, projects.name)
+      .groupBy(permits.id, projects.id, projects.name)
       .orderBy(desc(permits.createdAt));
 
     // Enrich with computed fields

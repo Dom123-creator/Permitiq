@@ -20,6 +20,7 @@ interface SubmissionPanelProps {
   permitId: string;
   permitName: string;
   permitType: string;
+  jurisdiction: string;
   submissionStatus: SubmissionStatus;
   submissionDeadline: string | null;
   isOpen: boolean;
@@ -48,10 +49,15 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 const CATEGORY_ORDER = ['documents', 'fees', 'steps'];
 
+function daysFromNow(dateStr: string): number {
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
 export function SubmissionPanel({
   permitId,
   permitName,
   permitType,
+  jurisdiction,
   submissionStatus: initialStatus,
   submissionDeadline: initialDeadline,
   isOpen,
@@ -70,11 +76,12 @@ export function SubmissionPanel({
   const [addingCategory, setAddingCategory] = useState<string | null>(null);
   const [newItemLabel, setNewItemLabel] = useState('');
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deadlineTaskCreated, setDeadlineTaskCreated] = useState(false);
 
-  // Sync props → local state when panel opens for a new permit
   useEffect(() => {
     setStatus(initialStatus);
     setDeadline(initialDeadline ? new Date(initialDeadline).toISOString().split('T')[0] : '');
+    setDeadlineTaskCreated(false);
   }, [permitId, initialStatus, initialDeadline]);
 
   const loadItems = useCallback(async () => {
@@ -120,6 +127,26 @@ export function SubmissionPanel({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ submissionDeadline: value || null }),
     });
+
+    // Auto-create a reminder task if deadline is within 7 days
+    if (value && !deadlineTaskCreated) {
+      const days = daysFromNow(value);
+      if (days >= 0 && days <= 7) {
+        await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `Submission deadline in ${days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'}`} — ${permitName}`,
+            permitId,
+            type: 'auto',
+            priority: days <= 2 ? 'urgent' : 'high',
+            dueDate: value,
+            notes: `AHJ response deadline set for ${new Date(value).toLocaleDateString()}. Review submission status and prepare any outstanding documents.`,
+          }),
+        });
+        setDeadlineTaskCreated(true);
+      }
+    }
   };
 
   const saveCorrectionNotes = async (value: string) => {
@@ -131,13 +158,19 @@ export function SubmissionPanel({
     });
   };
 
-  const seedDefaults = async () => {
+  const seedDefaults = async (reset = false) => {
     setIsSeeding(true);
     try {
+      const body: Record<string, unknown> = { jurisdiction };
+      if (reset) {
+        body.resetDefaults = true;
+      } else {
+        body.seedDefaults = true;
+      }
       const res = await fetch(`/api/permits/${permitId}/checklist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seedDefaults: true }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (Array.isArray(data)) setItems(data);
@@ -193,9 +226,10 @@ export function SubmissionPanel({
     return acc;
   }, {});
 
-  const daysUntilDeadline = deadline
-    ? Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : null;
+  const daysUntilDeadline = deadline ? daysFromNow(deadline) : null;
+
+  // Jurisdiction label for the defaults button
+  const jurisdictionLabel = jurisdiction ? ` (${jurisdiction})` : '';
 
   if (!isOpen) return null;
 
@@ -216,8 +250,25 @@ export function SubmissionPanel({
               <h2 className="text-base font-semibold text-text">Submission Workflow</h2>
             </div>
             <p className="text-xs text-muted mt-0.5 truncate">{permitName}</p>
+            {jurisdiction && (
+              <p className="text-xs text-muted/60 mt-0.5">{permitType} · {jurisdiction}</p>
+            )}
           </div>
-          <button onClick={onClose} className="text-muted hover:text-text p-1 flex-shrink-0 ml-3">
+          {/* Checklist readiness in header */}
+          {totalRequired > 0 && (
+            <div className="flex flex-col items-end gap-1 mr-3">
+              <span className={`text-xs font-semibold ${pct === 100 ? 'text-success' : pct >= 50 ? 'text-warn' : 'text-muted'}`}>
+                {completedRequired}/{totalRequired}
+              </span>
+              <div className="w-16 h-1 bg-surface2 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${pct === 100 ? 'bg-success' : pct >= 50 ? 'bg-accent' : 'bg-warn'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )}
+          <button onClick={onClose} className="text-muted hover:text-text p-1 flex-shrink-0">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -290,6 +341,14 @@ export function SubmissionPanel({
                     : daysUntilDeadline === 0
                     ? 'Due today'
                     : `${daysUntilDeadline} days remaining`}
+                  {deadlineTaskCreated && (
+                    <span className="ml-2 text-success">· Reminder task created</span>
+                  )}
+                </p>
+              )}
+              {daysUntilDeadline !== null && daysUntilDeadline >= 0 && daysUntilDeadline <= 7 && !deadlineTaskCreated && (
+                <p className="text-xs text-warn mt-1">
+                  Deadline is soon — a reminder task was auto-created in your queue.
                 </p>
               )}
             </div>
@@ -330,11 +389,11 @@ export function SubmissionPanel({
                 )}
                 {items.length === 0 && !isLoading && (
                   <button
-                    onClick={seedDefaults}
+                    onClick={() => seedDefaults(false)}
                     disabled={isSeeding}
                     className="text-xs px-2.5 py-1 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
                   >
-                    {isSeeding ? 'Loading…' : `Load ${permitType} defaults`}
+                    {isSeeding ? 'Loading…' : `Load ${permitType}${jurisdictionLabel} defaults`}
                   </button>
                 )}
               </div>
@@ -373,6 +432,9 @@ export function SubmissionPanel({
                     <div key={cat}>
                       <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
                         {CATEGORY_LABELS[cat]}
+                        <span className="ml-2 font-normal normal-case text-muted/60">
+                          {catItems.filter((i) => i.completed).length}/{catItems.length}
+                        </span>
                       </div>
                       <div className="space-y-1">
                         {catItems.length === 0 && (
@@ -457,14 +519,18 @@ export function SubmissionPanel({
               </div>
             )}
 
-            {/* Load defaults when there ARE items already */}
+            {/* Reset / reload defaults when items already exist */}
             {items.length > 0 && (
               <button
-                onClick={seedDefaults}
+                onClick={() => {
+                  if (confirm(`Reset checklist to ${permitType}${jurisdictionLabel} defaults? This will remove all current items.`)) {
+                    seedDefaults(true);
+                  }
+                }}
                 disabled={isSeeding}
                 className="mt-4 w-full py-2 text-xs text-muted hover:text-text border border-border hover:border-muted rounded-lg transition-colors"
               >
-                {isSeeding ? 'Loading…' : 'Reset to defaults'}
+                {isSeeding ? 'Resetting…' : `Reset to ${permitType}${jurisdictionLabel} defaults`}
               </button>
             )}
           </div>

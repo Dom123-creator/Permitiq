@@ -29,6 +29,8 @@ interface Permit {
   feeBudgeted?: number | null;
   submissionStatus?: string | null;
   submissionDeadline?: string | null;
+  checklistTotal?: number;
+  checklistDone?: number;
 }
 
 // Helper to create dates relative to today
@@ -1046,6 +1048,14 @@ export function PermitTracker() {
                              permit.submissionStatus === 'approved' ? 'Approved' :
                              'Draft'}
                           </span>
+                          {/* Checklist progress */}
+                          {(permit.checklistTotal ?? 0) > 0 && (
+                            <span className={`text-xs tabular-nums ${
+                              permit.checklistDone === permit.checklistTotal ? 'text-success' : 'text-muted'
+                            }`}>
+                              {permit.checklistDone}/{permit.checklistTotal}
+                            </span>
+                          )}
                         </button>
                       </td>
                       <td className="px-4 py-3">
@@ -1143,6 +1153,7 @@ export function PermitTracker() {
           permitId={submissionPermit.id}
           permitName={submissionPermit.name}
           permitType={submissionPermit.type}
+          jurisdiction={submissionPermit.jurisdiction}
           submissionStatus={(submissionPermit.submissionStatus ?? 'draft') as 'draft' | 'submitted' | 'under-review' | 'corrections-required' | 'approved'}
           submissionDeadline={submissionPermit.submissionDeadline ?? null}
           isOpen={!!submissionPermit}
