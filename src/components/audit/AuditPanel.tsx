@@ -23,7 +23,7 @@ export function AuditPanel({ permitId, permitName, isOpen, onClose }: AuditPanel
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-[520px] bg-surface border-l border-border z-50 flex flex-col shadow-2xl">
+      <div className="fixed right-0 top-0 h-full w-full md:w-[520px] bg-surface border-l border-border z-50 flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>

@@ -17,7 +17,7 @@ export default function PermitsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-4 md:p-6">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

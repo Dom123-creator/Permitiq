@@ -118,7 +118,7 @@ export function RuleEngine() {
   return (
     <div className="space-y-6">
       {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="stat-card border-t-2 border-t-accent">
           {isLoading ? (
             <div className="h-8 w-8 rounded bg-surface2 animate-pulse mb-1" />

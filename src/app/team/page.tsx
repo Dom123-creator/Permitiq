@@ -12,8 +12,8 @@ export default async function TeamPage() {
   return (
     <div className="min-h-screen bg-bg">
       <Header />
-      <main className="max-w-5xl mx-auto py-8">
-        <div className="px-6 mb-6">
+      <main className="max-w-5xl mx-auto py-6 md:py-8">
+        <div className="px-4 md:px-6 mb-6">
           <h1 className="text-2xl font-semibold text-text">Team Management</h1>
           <p className="text-sm text-muted mt-1">Invite and manage your team members and their project access.</p>
         </div>

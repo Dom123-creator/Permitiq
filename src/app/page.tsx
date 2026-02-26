@@ -9,11 +9,15 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-auto p-6">
+        <div className="hidden md:block flex-shrink-0">
+          <Sidebar />
+        </div>
+        <main className="flex-1 overflow-auto p-4 md:p-6">
           <PermitTracker />
         </main>
-        <ChatPanel />
+        <div className="hidden lg:block flex-shrink-0">
+          <ChatPanel />
+        </div>
       </div>
       <OnboardingController />
     </div>

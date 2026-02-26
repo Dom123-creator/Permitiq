@@ -30,7 +30,7 @@ export function FeeStatCards() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[1, 2, 3].map((i) => (
           <div key={i} className="stat-card animate-pulse">
             <div className="h-4 bg-surface2 rounded w-1/2 mb-3" />
@@ -47,7 +47,7 @@ export function FeeStatCards() {
   const overBudget = stats.totalBudgeted > 0 && variance > 0;
 
   return (
-    <div className="grid grid-cols-3 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
       {/* Total Charged */}
       <div className="stat-card" style={{ borderTopColor: 'var(--accent)' }}>
         <div className="flex items-center justify-between mb-2">
