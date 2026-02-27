@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { requireRole } from '@/lib/auth/guards';
 import { getDb, users, projectMembers } from '@/lib/db';
+import { sendEmail, inviteEmailHtml } from '@/lib/email/sendgrid';
 
 // POST /api/team/invite — send an invite (admin/owner only)
 export async function POST(request: NextRequest) {
   const sessionOrError = await requireRole(['owner', 'admin']);
   if (sessionOrError instanceof NextResponse) return sessionOrError;
+  const session = sessionOrError;
 
   try {
     const { email, role = 'pm', projectIds = [] } = await request.json();
@@ -45,15 +47,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const inviteUrl = `${process.env.NEXTAUTH_URL ?? 'http://localhost:3000'}/invite/${inviteToken}`;
+    const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+    const inviteUrl = `${baseUrl}/invite/${inviteToken}`;
 
-    // Send email if SendGrid is configured, else log to console
-    if (process.env.SENDGRID_API_KEY) {
-      // TODO: integrate SendGrid send
-      console.log('[SendGrid] Invite email would be sent to:', email);
-    } else {
-      console.log(`[DEV] Invite URL for ${email}:`, inviteUrl);
-    }
+    // Send invite email via SendGrid
+    void sendEmail({
+      to: email,
+      subject: `You've been invited to PermitIQ`,
+      html: inviteEmailHtml({
+        inviterName: session.user.name ?? session.user.email ?? 'Your team',
+        inviteUrl,
+        role,
+      }),
+      text: `You've been invited to join PermitIQ as ${role}.\n\nAccept your invitation: ${inviteUrl}\n\nThis link expires in 7 days.`,
+    });
 
     return NextResponse.json({ success: true, inviteUrl }, { status: 201 });
   } catch (error) {

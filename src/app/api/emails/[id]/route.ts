@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
-import { getDb, emailDrafts } from '@/lib/db';
+import { getDb, emailDrafts, users } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
+import { sendEmail, emailDraftHtml } from '@/lib/email/sendgrid';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -11,6 +12,7 @@ interface RouteParams {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const sessionOrError = await requireAuth();
   if (sessionOrError instanceof NextResponse) return sessionOrError;
+  const session = sessionOrError;
 
   const { id } = await params;
   try {
@@ -35,11 +37,35 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if ('status' in body) updates.status = body.status;
     if ('sentAt' in body) updates.sentAt = body.sentAt ? new Date(body.sentAt) : null;
 
+    // If approving/sending, stamp sentAt + reviewedBy
+    if (body.status === 'sent') {
+      updates.sentAt = new Date();
+      updates.reviewedBy = session.user.id;
+    }
+
     const [updated] = await db
       .update(emailDrafts)
       .set(updates)
       .where(eq(emailDrafts.id, id))
       .returning();
+
+    // Send the email when status transitions to 'sent'
+    if (body.status === 'sent' && existing.status !== 'sent') {
+      const recipientEmail = updated.recipient ?? body.recipient;
+      if (recipientEmail) {
+        void sendEmail({
+          to: recipientEmail,
+          toName: updated.recipientName ?? undefined,
+          subject: updated.subject,
+          html: emailDraftHtml({
+            subject: updated.subject,
+            body: updated.body,
+            recipientName: updated.recipientName ?? undefined,
+          }),
+          text: updated.body,
+        });
+      }
+    }
 
     return NextResponse.json(updated);
   } catch (error) {
