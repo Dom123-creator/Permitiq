@@ -9,8 +9,6 @@
  *   OR instruct them to message @userinfobot.
  */
 
-const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
-
 export async function sendTelegramMessage(
   chatId: string,
   text: string,
@@ -18,6 +16,8 @@ export async function sendTelegramMessage(
 ): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return false;
+
+  const TELEGRAM_API = `https://api.telegram.org/bot${token}`;
 
   try {
     const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
@@ -49,6 +49,8 @@ export async function sendTelegramMessage(
 export async function registerTelegramWebhook(webhookUrl: string, secret?: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return false;
+
+  const TELEGRAM_API = `https://api.telegram.org/bot${token}`;
 
   try {
     const body: Record<string, string> = { url: webhookUrl };
