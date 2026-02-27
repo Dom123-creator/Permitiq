@@ -11,6 +11,7 @@ const navItems = [
   { name: 'Inspections', href: '/inspections' },
   { name: 'Costs', href: '/costs' },
   { name: 'Analytics', href: '/analytics' },
+  { name: 'Markets', href: '/markets' },
   { name: 'Emails', href: '/emails' },
   { name: 'Tasks', href: '/tasks' },
   { name: 'Rules', href: '/rules' },

@@ -241,6 +241,36 @@ export const webhookDeliveries = pgTable('webhook_deliveries', {
   attemptedAt: timestamp('attempted_at').defaultNow().notNull(),
 });
 
+// Market / AHJ (Authority Having Jurisdiction) intelligence database
+export const jurisdictions = pgTable('jurisdictions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  metro: text('metro').notNull(),           // e.g. "Houston Metro"
+  city: text('city').notNull(),             // e.g. "Houston"
+  county: text('county'),                   // e.g. "Harris County"
+  state: text('state').notNull(),           // e.g. "TX"
+  ahjName: text('ahj_name').notNull(),      // e.g. "City of Houston Development Services"
+  portalUrl: text('portal_url'),            // Official permit portal URL
+  feeScheduleUrl: text('fee_schedule_url'), // Fee schedule PDF/page URL
+  phone: text('phone'),
+  email: text('email'),
+  address: text('address'),
+  // Average review times by permit type (business days; null = unknown)
+  avgReviewDaysBuilding: integer('avg_review_days_building'),
+  avgReviewDaysElectrical: integer('avg_review_days_electrical'),
+  avgReviewDaysPlumbing: integer('avg_review_days_plumbing'),
+  avgReviewDaysMechanical: integer('avg_review_days_mechanical'),
+  avgReviewDaysFire: integer('avg_review_days_fire'),
+  // Market intelligence
+  marketTier: integer('market_tier').notNull().default(2), // 1=most active, 2=high, 3=active
+  constructionActivity: text('construction_activity'),     // 'very-high'|'high'|'moderate'
+  primarySectors: text('primary_sectors'),                 // JSON array: ["commercial","multifamily","healthcare"]
+  permitVolume: text('permit_volume'),                     // Descriptive annual volume
+  yoyGrowthPct: decimal('yoy_growth_pct', { precision: 5, scale: 1 }), // YoY % change
+  notes: text('notes'),                                    // AHJ-specific tips/notes
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Workspace branding settings — single-row table
 export const workspaceSettings = pgTable('workspace_settings', {
   id: uuid('id').primaryKey().defaultRandom(),
