@@ -118,6 +118,8 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   inviteToken: text('invite_token'),
   inviteExpiry: timestamp('invite_expiry'),
+  passwordResetToken: text('password_reset_token'),
+  passwordResetExpiry: timestamp('password_reset_expiry'),
   isActive: boolean('is_active').default(true).notNull(),
   // Notification preferences
   telegramChatId: text('telegram_chat_id'),    // Telegram user/chat ID for bot messages

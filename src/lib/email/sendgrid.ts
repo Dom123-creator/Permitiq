@@ -119,6 +119,54 @@ export function inviteEmailHtml(opts: {
 </html>`.trim();
 }
 
+export function passwordResetEmailHtml(opts: {
+  resetUrl: string;
+  companyName?: string;
+}): string {
+  const company = opts.companyName ?? 'PermitIQ';
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0d12;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8edf5">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0d12;padding:40px 20px">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#111620;border:1px solid #1e2a3d;border-radius:12px;overflow:hidden">
+        <tr><td style="background:#00e5ff;padding:6px 0"></td></tr>
+        <tr><td style="padding:32px 40px 24px">
+          <div style="font-size:22px;font-weight:700;color:#e8edf5;margin-bottom:8px">${company}</div>
+          <div style="font-size:14px;color:#5a6a85">Password Reset</div>
+        </td></tr>
+        <tr><td style="padding:0 40px 32px">
+          <p style="font-size:16px;color:#e8edf5;margin:0 0 16px">
+            You requested a password reset for your <strong>${company}</strong> account.
+          </p>
+          <p style="font-size:14px;color:#5a6a85;margin:0 0 32px">
+            Click the button below to set a new password. This link expires in 1 hour.
+          </p>
+          <a href="${opts.resetUrl}"
+             style="display:inline-block;background:#00e5ff;color:#000;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none">
+            Reset Password
+          </a>
+          <p style="font-size:12px;color:#5a6a85;margin:24px 0 0">
+            Or copy this link: <a href="${opts.resetUrl}" style="color:#00e5ff">${opts.resetUrl}</a>
+          </p>
+          <p style="font-size:12px;color:#5a6a85;margin:16px 0 0">
+            If you didn't request a password reset, you can safely ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #1e2a3d">
+          <p style="font-size:12px;color:#5a6a85;margin:0">
+            ${company} · Permit Intelligence Platform
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 export function emailDraftHtml(opts: {
   subject: string;
   body: string;
