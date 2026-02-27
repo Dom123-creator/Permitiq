@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { getDb, inspections, tasks, auditLog } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
 import { deliverWebhookEvent } from '@/lib/webhooks/deliver';
+import { notifyAllActiveUsers } from '@/lib/notifications/notify';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -42,7 +43,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .where(eq(inspections.id, id))
       .returning();
 
-    // If inspection failed, auto-create a re-inspection task
+    // If inspection failed, auto-create a re-inspection task + notify
     if (body.result === 'fail' && existing.result !== 'fail') {
       await db.insert(tasks).values({
         permitId: existing.permitId,
@@ -58,6 +59,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         action: 'task_created',
         newValue: `Re-inspection task auto-created after ${existing.type} failed`,
       });
+
+      // Push notification for inspection failure (fire-and-forget)
+      void notifyAllActiveUsers('inspection.fail', () =>
+        `❌ *Inspection Failed*\n` +
+        `Type: ${existing.type}\n` +
+        `Action: Schedule re-inspection ASAP`
+      );
     }
 
     // Write audit entry for result changes

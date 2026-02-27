@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // /api/v1/* uses Bearer token auth handled inside route handlers (not cookies)
 // /api/settings/branding GET is public (used by login page before auth)
-const PUBLIC_PATHS = ['/login', '/invite', '/api/auth', '/api/v1', '/api/settings/branding'];
+const PUBLIC_PATHS = ['/login', '/invite', '/api/auth', '/api/v1', '/api/settings/branding', '/api/telegram/webhook'];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname.startsWith(p));

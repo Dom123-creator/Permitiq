@@ -94,7 +94,7 @@ export function Header() {
           { name: 'Developer', href: '/developer' },
         ]
       : []),
-    ...(isOwner ? [{ name: 'Settings', href: '/settings' }] : []),
+    { name: 'Settings', href: '/settings' },
   ];
 
   useEffect(() => {
@@ -247,15 +247,13 @@ export function Header() {
                         </Link>
                       </>
                     )}
-                    {isOwner && (
-                      <Link
-                        href="/settings"
-                        onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-text hover:bg-surface2 transition-colors"
-                      >
-                        Settings
-                      </Link>
-                    )}
+                    <Link
+                      href="/settings"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-text hover:bg-surface2 transition-colors"
+                    >
+                      Settings
+                    </Link>
                     <button
                       onClick={handleSignOut}
                       className="w-full flex items-center gap-2 px-4 py-2 text-sm text-danger hover:bg-surface2 transition-colors text-left"

@@ -119,6 +119,11 @@ export const users = pgTable('users', {
   inviteToken: text('invite_token'),
   inviteExpiry: timestamp('invite_expiry'),
   isActive: boolean('is_active').default(true).notNull(),
+  // Notification preferences
+  telegramChatId: text('telegram_chat_id'),    // Telegram user/chat ID for bot messages
+  phoneNumber: text('phone_number'),            // E.164 format for SMS (e.g. +15551234567)
+  notificationChannel: text('notification_channel').default('none'), // 'telegram'|'sms'|'both'|'none'
+  notifyEvents: text('notify_events').default('["permit.status","inspection.fail","expiry","daily.digest"]'), // JSON array
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

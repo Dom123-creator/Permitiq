@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { getDb, permits, auditLog } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
 import { deliverWebhookEvent } from '@/lib/webhooks/deliver';
+import { notifyAllActiveUsers } from '@/lib/notifications/notify';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -80,6 +81,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         previousStatus: current.status,
         updatedBy: session.user.id,
       })]);
+
+      // Push notification to users (fire-and-forget)
+      const notifyEvent = body.status === 'approved' ? 'permit.approved' : 'permit.status';
+      const statusEmoji: Record<string, string> = {
+        approved: '✅',
+        rejected: '❌',
+        'under-review': '🔍',
+        'info-requested': '📋',
+        pending: '⏳',
+      };
+      const emoji = statusEmoji[body.status as string] ?? '🔄';
+      void notifyAllActiveUsers(notifyEvent, () =>
+        `${emoji} *Permit Update*\n` +
+        `*${current.name}* (${current.type})\n` +
+        `📍 ${current.jurisdiction}\n` +
+        `Status: ${current.status} → *${body.status}*`
+      );
     }
 
     // Write audit entry for submission status changes
