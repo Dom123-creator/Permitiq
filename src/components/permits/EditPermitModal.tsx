@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 interface Permit {
   id: string;
@@ -13,6 +13,20 @@ interface Permit {
   expiryDate: Date | null;
   feeBudgeted?: number | null;
   notes?: string | null;
+}
+
+interface JurisdictionEntry {
+  id: string;
+  city: string;
+  state: string;
+  metro: string;
+  ahjName: string;
+  portalUrl: string | null;
+  avgReviewDaysBuilding: number | null;
+  avgReviewDaysElectrical: number | null;
+  avgReviewDaysPlumbing: number | null;
+  avgReviewDaysMechanical: number | null;
+  avgReviewDaysFire: number | null;
 }
 
 interface EditPermitModalProps {
@@ -29,7 +43,23 @@ const PERMIT_STATUSES = [
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
 ];
-const JURISDICTIONS = ['Houston', 'Harris County', 'Austin', 'Dallas', 'San Antonio'];
+
+function avgDaysForType(jur: JurisdictionEntry, type: string): number | null {
+  const t = type.toLowerCase();
+  if (t === 'building') return jur.avgReviewDaysBuilding;
+  if (t === 'electrical') return jur.avgReviewDaysElectrical;
+  if (t === 'plumbing') return jur.avgReviewDaysPlumbing;
+  if (t === 'mechanical') return jur.avgReviewDaysMechanical;
+  if (t === 'fire') return jur.avgReviewDaysFire;
+  return null;
+}
+
+function normalizeCity(s: string) {
+  return s.toLowerCase()
+    .replace(/\s*\(unincorporated\)\s*/gi, '')
+    .replace(/\s*\/\s*.+$/, '')
+    .trim();
+}
 
 function toDateInputValue(date: Date | null): string {
   if (!date) return '';
@@ -39,6 +69,14 @@ function toDateInputValue(date: Date | null): string {
 export function EditPermitModal({ permit, onClose, onSuccess }: EditPermitModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [allJurisdictions, setAllJurisdictions] = useState<JurisdictionEntry[]>([]);
+
+  useEffect(() => {
+    fetch('/api/markets')
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data.jurisdictions)) setAllJurisdictions(data.jurisdictions); })
+      .catch(() => {});
+  }, []);
 
   const [form, setForm] = useState({
     name: permit.name,
@@ -67,6 +105,13 @@ export function EditPermitModal({ permit, onClose, onSuccess }: EditPermitModalP
     });
     setError('');
   }, [permit.id]);
+
+  // Fuzzy-match typed jurisdiction against DB
+  const matchedJur = useMemo<JurisdictionEntry | null>(() => {
+    if (!form.jurisdiction.trim() || allJurisdictions.length === 0) return null;
+    const q = normalizeCity(form.jurisdiction);
+    return allJurisdictions.find((j) => normalizeCity(j.city) === q) ?? null;
+  }, [form.jurisdiction, allJurisdictions]);
 
   const set =
     (field: keyof typeof form) =>
@@ -167,15 +212,56 @@ export function EditPermitModal({ permit, onClose, onSuccess }: EditPermitModalP
               <label className="block text-xs text-muted mb-1">Jurisdiction *</label>
               <input
                 type="text"
-                list="edit-jurisdictions"
+                list="edit-jurisdictions-list"
                 value={form.jurisdiction}
                 onChange={set('jurisdiction')}
                 className="input w-full"
               />
-              <datalist id="edit-jurisdictions">
-                {JURISDICTIONS.map((j) => <option key={j} value={j} />)}
+              <datalist id="edit-jurisdictions-list">
+                {allJurisdictions.map((j) => (
+                  <option key={j.id} value={j.city}>{j.city}, {j.state}</option>
+                ))}
               </datalist>
             </div>
+
+            {/* AHJ Preview card */}
+            {matchedJur && (
+              <div className="rounded-lg bg-accent/5 border border-accent/20 p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-semibold text-accent">AHJ Matched</div>
+                    <div className="text-xs text-text mt-0.5">{matchedJur.ahjName}</div>
+                    <div className="text-xs text-muted">{matchedJur.metro} · {matchedJur.state}</div>
+                  </div>
+                  {matchedJur.portalUrl && (
+                    <a
+                      href={matchedJur.portalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded text-xs bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Portal
+                    </a>
+                  )}
+                </div>
+                {form.type && avgDaysForType(matchedJur, form.type) !== null && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-accent/10">
+                    <span className="text-xs text-muted">Expected review:</span>
+                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                      (avgDaysForType(matchedJur, form.type) ?? 99) <= 7 ? 'bg-success/15 text-success' :
+                      (avgDaysForType(matchedJur, form.type) ?? 99) <= 14 ? 'bg-accent/15 text-accent' :
+                      (avgDaysForType(matchedJur, form.type) ?? 99) <= 21 ? 'bg-warn/15 text-warn' :
+                      'bg-danger/15 text-danger'
+                    }`}>
+                      ~{avgDaysForType(matchedJur, form.type)} days ({form.type})
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Authority + Permit Number */}
             <div className="grid grid-cols-2 gap-3">

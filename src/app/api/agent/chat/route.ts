@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getDb, jurisdictions } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
 
 const SYSTEM_PROMPT = `You are PermitIQ's AI permit intelligence agent. You help construction project managers track and manage commercial building permits across multiple jurisdictions in the US.
@@ -42,6 +43,66 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 503 });
     }
 
+    // Look up any jurisdictions mentioned in the message and inject as context
+    let jurisdictionContext = '';
+    try {
+      const db = getDb();
+      const msgLower = message.toLowerCase();
+
+      // Find all jurisdiction rows whose city name appears in the message
+      const allJurs = await db.select({
+        city: jurisdictions.city,
+        state: jurisdictions.state,
+        metro: jurisdictions.metro,
+        ahjName: jurisdictions.ahjName,
+        portalUrl: jurisdictions.portalUrl,
+        phone: jurisdictions.phone,
+        avgBuilding: jurisdictions.avgReviewDaysBuilding,
+        avgElectrical: jurisdictions.avgReviewDaysElectrical,
+        avgPlumbing: jurisdictions.avgReviewDaysPlumbing,
+        avgMechanical: jurisdictions.avgReviewDaysMechanical,
+        avgFire: jurisdictions.avgReviewDaysFire,
+        notes: jurisdictions.notes,
+      }).from(jurisdictions);
+
+      const matched = allJurs.filter((j) =>
+        msgLower.includes(j.city.toLowerCase()) ||
+        msgLower.includes(j.metro.toLowerCase().replace(' metro', '')) ||
+        (j.state && msgLower.includes(j.state.toLowerCase()))
+      );
+
+      // Deduplicate by city (in case multiple partial matches)
+      const seen = new Set<string>();
+      const unique = matched.filter((j) => {
+        if (seen.has(j.city)) return false;
+        seen.add(j.city);
+        return true;
+      }).slice(0, 3); // max 3 jurisdictions to avoid prompt bloat
+
+      if (unique.length > 0) {
+        jurisdictionContext = '\n\n--- PERMITIQ MARKET DATABASE (verified data) ---\n';
+        jurisdictionContext += 'The following AHJ data is from PermitIQ\'s verified market database. Prefer this over web search for these jurisdictions:\n\n';
+        for (const j of unique) {
+          jurisdictionContext += `**${j.city}, ${j.state} — ${j.ahjName}**\n`;
+          if (j.portalUrl) jurisdictionContext += `  Portal: ${j.portalUrl}\n`;
+          if (j.phone) jurisdictionContext += `  Phone: ${j.phone}\n`;
+          const avgLines = [
+            j.avgBuilding != null ? `Building: ${j.avgBuilding}d` : null,
+            j.avgElectrical != null ? `Electrical: ${j.avgElectrical}d` : null,
+            j.avgPlumbing != null ? `Plumbing: ${j.avgPlumbing}d` : null,
+            j.avgMechanical != null ? `Mechanical: ${j.avgMechanical}d` : null,
+            j.avgFire != null ? `Fire: ${j.avgFire}d` : null,
+          ].filter(Boolean);
+          if (avgLines.length) jurisdictionContext += `  Avg review times: ${avgLines.join(', ')}\n`;
+          if (j.notes) jurisdictionContext += `  AHJ notes: ${j.notes}\n`;
+          jurisdictionContext += '\n';
+        }
+        jurisdictionContext += '--- END MARKET DATABASE ---';
+      }
+    } catch {
+      // DB unavailable — proceed without context injection
+    }
+
     const client = new Anthropic({ apiKey });
 
     // Build conversation history (last 10 messages to stay within context)
@@ -56,7 +117,7 @@ export async function POST(request: NextRequest) {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: SYSTEM_PROMPT + jurisdictionContext,
       tools: [
         {
           type: 'web_search_20260209',

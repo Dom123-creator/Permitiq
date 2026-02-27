@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc, sql, and, inArray } from 'drizzle-orm';
-import { getDb, permits, projects, documents, inspections, fees, projectMembers, checklistItems } from '@/lib/db';
+import { getDb, permits, projects, documents, inspections, fees, projectMembers, checklistItems, jurisdictions } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
 
 // Jurisdiction average review days — used to colour-code days-in-queue
@@ -95,12 +95,61 @@ export async function GET(request: NextRequest) {
       .groupBy(permits.id, projects.id, projects.name)
       .orderBy(desc(permits.createdAt));
 
+    // Fetch jurisdiction market data for DB-driven avgDays + portalUrl
+    // Normalize city names to handle "(unincorporated)" suffixes, slashes, etc.
+    const normalizeCity = (s: string) =>
+      s.toLowerCase()
+        .replace(/\s*\(unincorporated\)\s*/gi, '')
+        .replace(/\s*\/\s*.+$/, '') // take first segment before " / "
+        .trim();
+
+    let jurMap = new Map<string, {
+      portalUrl: string | null;
+      avgBuilding: number | null;
+      avgElectrical: number | null;
+      avgPlumbing: number | null;
+      avgMechanical: number | null;
+      avgFire: number | null;
+    }>();
+
+    if (rows.length > 0) {
+      const jurRows = await db.select({
+        city: jurisdictions.city,
+        portalUrl: jurisdictions.portalUrl,
+        avgBuilding: jurisdictions.avgReviewDaysBuilding,
+        avgElectrical: jurisdictions.avgReviewDaysElectrical,
+        avgPlumbing: jurisdictions.avgReviewDaysPlumbing,
+        avgMechanical: jurisdictions.avgReviewDaysMechanical,
+        avgFire: jurisdictions.avgReviewDaysFire,
+      }).from(jurisdictions);
+
+      for (const j of jurRows) {
+        jurMap.set(normalizeCity(j.city), j);
+      }
+    }
+
+    const dbAvgDays = (jur: string, type: string): number | null => {
+      const entry = jurMap.get(normalizeCity(jur));
+      if (!entry) return null;
+      const t = type.toLowerCase();
+      if (t === 'building') return entry.avgBuilding;
+      if (t === 'electrical') return entry.avgElectrical;
+      if (t === 'plumbing') return entry.avgPlumbing;
+      if (t === 'mechanical') return entry.avgMechanical;
+      if (t === 'fire') return entry.avgFire;
+      return null;
+    };
+
     // Enrich with computed fields
-    const enriched = rows.map((r) => ({
-      ...r,
-      daysInQueue: computeDaysInQueue(r.submittedAt, r.daysInQueue),
-      avgDays: avgDays(r.jurisdiction, r.type),
-    }));
+    const enriched = rows.map((r) => {
+      const jurEntry = jurMap.get(normalizeCity(r.jurisdiction));
+      return {
+        ...r,
+        daysInQueue: computeDaysInQueue(r.submittedAt, r.daysInQueue),
+        avgDays: dbAvgDays(r.jurisdiction, r.type) ?? avgDays(r.jurisdiction, r.type),
+        portalUrl: jurEntry?.portalUrl ?? null,
+      };
+    });
 
     return NextResponse.json(enriched);
   } catch (error) {
