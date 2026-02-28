@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, and, desc } from 'drizzle-orm';
 import { getDb, permits, projects } from '@/lib/db';
-import { verifyApiKey } from '@/lib/auth/apiKeyAuth';
-import { requireAuth } from '@/lib/auth/guards';
+import { requireV1Auth } from '@/lib/auth/v1Auth';
 
 // GET /api/v1/permits — paginated permit list
 export async function GET(request: NextRequest) {
-  // Accept either API key or session cookie
-  const apiSession = await verifyApiKey(request);
-  if (!apiSession) {
-    const sessionOrError = await requireAuth();
-    if (sessionOrError instanceof NextResponse) return sessionOrError;
-  }
+  const session = await requireV1Auth(request);
+  if (session instanceof NextResponse) return session;
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));

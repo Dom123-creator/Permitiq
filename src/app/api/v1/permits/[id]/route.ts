@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb, permits } from '@/lib/db';
-import { verifyApiKey, hasScope } from '@/lib/auth/apiKeyAuth';
-import { requireAuth } from '@/lib/auth/guards';
+import { requireV1Auth } from '@/lib/auth/v1Auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -11,11 +10,8 @@ interface RouteParams {
 
 // GET /api/v1/permits/[id]
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const apiSession = await verifyApiKey(request);
-  if (!apiSession) {
-    const sessionOrError = await requireAuth();
-    if (sessionOrError instanceof NextResponse) return sessionOrError;
-  }
+  const session = await requireV1Auth(request);
+  if (session instanceof NextResponse) return session;
 
   const { id } = await params;
   try {
@@ -36,14 +32,11 @@ const patchSchema = z.object({
 
 // PATCH /api/v1/permits/[id] — status update (write scope required)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const apiSession = await verifyApiKey(request);
-  if (apiSession) {
-    if (!hasScope(apiSession, 'write')) {
-      return NextResponse.json({ error: 'Write scope required' }, { status: 403 });
-    }
-  } else {
-    const sessionOrError = await requireAuth();
-    if (sessionOrError instanceof NextResponse) return sessionOrError;
+  const session = await requireV1Auth(request);
+  if (session instanceof NextResponse) return session;
+
+  if (!session.scopes.includes('write')) {
+    return NextResponse.json({ error: 'Write scope required' }, { status: 403 });
   }
 
   const { id } = await params;
