@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, users } from '@/lib/db';
 import { sendEmail, passwordResetEmailHtml } from '@/lib/email/sendgrid';
+import { rateLimit } from '@/lib/rateLimit';
 
 // POST /api/auth/forgot-password
 // Public — no auth required.
 // Always returns 200 to prevent email enumeration.
 export async function POST(request: NextRequest) {
+  // IP rate limit: 10 requests/hour — prevents bulk scanning
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    request.headers.get('x-real-ip') ??
+    'unknown';
+  const ipLimit = rateLimit(`forgot-ip:${ip}`, { windowMs: 60 * 60_000, max: 10 });
+  if (!ipLimit.success) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+  }
+
   let email: string;
 
   try {
@@ -18,6 +29,12 @@ export async function POST(request: NextRequest) {
 
   if (!email) {
     return NextResponse.json({ ok: true }); // silent fail — don't reveal anything
+  }
+
+  // Per-email rate limit: 3 requests/hour — silently skip (don't reveal which emails exist)
+  const emailLimit = rateLimit(`forgot-email:${email}`, { windowMs: 60 * 60_000, max: 3 });
+  if (!emailLimit.success) {
+    return NextResponse.json({ ok: true }); // silent — don't leak that this email hit a limit
   }
 
   try {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getDb, jurisdictions } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
+import { rateLimit } from '@/lib/rateLimit';
 
 const SYSTEM_PROMPT = `You are PermitIQ's AI permit intelligence agent. You help construction project managers track and manage commercial building permits across multiple jurisdictions in the US.
 
@@ -27,6 +28,24 @@ interface ConversationMessage {
 export async function POST(request: NextRequest) {
   const sessionOrError = await requireAuth();
   if (sessionOrError instanceof NextResponse) return sessionOrError;
+  const session = sessionOrError;
+
+  // Rate limit: 20 AI requests per minute per user
+  const rl = rateLimit(`chat:${session.user.id}`, { windowMs: 60_000, max: 20 });
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait before sending another message.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(rl.resetAt),
+          'X-RateLimit-Limit': String(rl.limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(rl.resetAt),
+        },
+      },
+    );
+  }
 
   try {
     const { message, history } = await request.json() as {
