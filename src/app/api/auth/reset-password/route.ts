@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { and, eq, gt, isNotNull } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { getDb, users } from '@/lib/db';
+import { rateLimit } from '@/lib/rateLimit';
 
 // POST /api/auth/reset-password
 // Public — no auth required.
 // Body: { token: string, password: string }
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 attempts/hour per IP — prevents token brute-force
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    request.headers.get('x-real-ip') ??
+    'unknown';
+  const rl = rateLimit(`reset-pw-ip:${ip}`, { windowMs: 60 * 60_000, max: 10 });
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
+  }
+
   let token: string;
   let password: string;
 
