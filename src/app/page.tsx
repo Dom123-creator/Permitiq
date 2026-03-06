@@ -2,6 +2,7 @@ import { Header } from '@/components/dashboard/Header';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { PermitTracker } from '@/components/dashboard/PermitTracker';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { MobileChatDrawer } from '@/components/chat/MobileChatDrawer';
 import { OnboardingController } from '@/components/onboarding/OnboardingController';
 
 export default function DashboardPage() {
@@ -20,6 +21,7 @@ export default function DashboardPage() {
         </div>
       </div>
       <OnboardingController />
+      <MobileChatDrawer />
     </div>
   );
 }

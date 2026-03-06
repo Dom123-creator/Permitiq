@@ -16,7 +16,12 @@ const suggestionChips = [
   'Check Houston building code updates',
 ];
 
-export function ChatPanel() {
+interface ChatPanelProps {
+  className?: string;
+  onClose?: () => void;
+}
+
+export function ChatPanel({ className, onClose }: ChatPanelProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -85,17 +90,30 @@ export function ChatPanel() {
   };
 
   return (
-    <aside className="w-80 bg-surface border-l border-border flex flex-col">
+    <aside className={className ?? 'w-80 bg-surface border-l border-border flex flex-col'}>
       {/* Header */}
       <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
-            <span className="text-accent text-sm">AI</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
+              <span className="text-accent text-sm">AI</span>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-text">PermitIQ Agent</h2>
+              <p className="text-xs text-muted">Ask about permits & codes</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-text">PermitIQ Agent</h2>
-            <p className="text-xs text-muted">Ask about permits & codes</p>
-          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface2 transition-colors"
+              aria-label="Close chat"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 /**
- * Seed script — populates Neon with demo data matching the UI prototype.
+ * Seed script — populates Neon with realistic Houston market demo data.
+ * Tailored for Maxx Builders pilot demo with real jurisdictions and permit types.
  * Run with: npx tsx scripts/seed.ts
  */
 import { loadEnvConfig } from '@next/env';
@@ -23,156 +24,301 @@ if (!DB_URL) throw new Error('DATABASE_URL not set');
 const client = postgres(DB_URL);
 const db = drizzle(client, { schema });
 
-async function seed() {
-  console.log('🌱 Seeding database...');
+// Helper — date math
+const daysFromNow = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d;
+};
+const daysAgo = (n: number) => daysFromNow(-n);
 
-  // Owner user — upsert so re-running seed doesn't fail
+async function seed() {
+  console.log('Seeding database with Houston market demo data...');
+
+  // ── Users ──────────────────────────────────────────────────────
   const ownerHash = await bcrypt.hash('permitiq-dev', 12);
   const [owner] = await db.insert(users).values({
-    name: 'Admin User',
+    name: 'Mike Torres',
     email: 'admin@permitiq.dev',
     role: 'owner',
     passwordHash: ownerHash,
     isActive: true,
   }).onConflictDoUpdate({
     target: users.email,
-    set: { passwordHash: ownerHash, isActive: true, role: 'owner' },
+    set: { passwordHash: ownerHash, isActive: true, role: 'owner', name: 'Mike Torres' },
   }).returning();
 
-  console.log('✓ Owner user (admin@permitiq.dev / permitiq-dev)');
-
-  // PM users — upsert so re-running seed doesn't fail
-  const [pm1, pm2] = await db.insert(users).values([
-    { name: 'Sarah Chen', email: 'sarah@permitiq.dev', role: 'pm', isActive: true },
-    { name: 'Marcus Williams', email: 'marcus@permitiq.dev', role: 'pm', isActive: true },
+  const pmHash = await bcrypt.hash('permitiq-dev', 12);
+  const [pm1, pm2, pm3] = await db.insert(users).values([
+    { name: 'Sarah Chen', email: 'sarah@permitiq.dev', role: 'pm' as const, passwordHash: pmHash, isActive: true },
+    { name: 'Marcus Williams', email: 'marcus@permitiq.dev', role: 'pm' as const, passwordHash: pmHash, isActive: true },
+    { name: 'Jessica Reyes', email: 'jessica@permitiq.dev', role: 'pm' as const, passwordHash: pmHash, isActive: true },
   ]).onConflictDoUpdate({
     target: users.email,
     set: { isActive: true },
   }).returning();
 
-  // Suppress unused owner reference
   void owner;
+  console.log('  Users (admin@permitiq.dev / permitiq-dev)');
 
-  console.log('✓ Users');
-
-  // Projects
-  const [proj1, proj2, proj3, proj4, proj5] = await db.insert(projects).values([
-    { name: 'Downtown Office Tower', client: 'Maxx Builders', status: 'active', dailyCarryingCost: '4200' },
-    { name: 'Memorial Hospital Wing', client: 'Anslow-Bryant', status: 'active', dailyCarryingCost: '6800' },
-    { name: 'Westside Retail Center', client: "O'Donnell/Snider", status: 'active', dailyCarryingCost: '2900' },
-    { name: 'University Science Building', client: 'SpawGlass', status: 'active', dailyCarryingCost: '3500' },
-    { name: 'Airport Terminal Expansion', client: 'Linbeck Group', status: 'active', dailyCarryingCost: '8100' },
+  // ── Projects (Real Houston-area Maxx Builders style) ───────────
+  const [proj1, proj2, proj3, proj4, proj5, proj6] = await db.insert(projects).values([
+    {
+      name: 'Heights Medical Plaza',
+      client: 'Maxx Builders',
+      status: 'active',
+      dailyCarryingCost: '4850',
+    },
+    {
+      name: 'Katy Freeway Retail Center',
+      client: 'Maxx Builders',
+      status: 'active',
+      dailyCarryingCost: '3200',
+    },
+    {
+      name: 'Sugar Land Town Square Hotel',
+      client: 'Maxx Builders',
+      status: 'active',
+      dailyCarryingCost: '6100',
+    },
+    {
+      name: 'Pearland Medical Office Bldg',
+      client: 'Anslow-Bryant',
+      status: 'active',
+      dailyCarryingCost: '3800',
+    },
+    {
+      name: 'Woodlands Mixed-Use Phase II',
+      client: "O'Donnell/Snider",
+      status: 'active',
+      dailyCarryingCost: '7200',
+    },
+    {
+      name: 'Memorial Hermann Clinic TI',
+      client: 'SpawGlass',
+      status: 'active',
+      dailyCarryingCost: '2400',
+    },
   ]).returning();
 
-  console.log('✓ Projects');
+  console.log('  Projects (6 Houston-area)');
 
-  // Helper — days from now
-  const daysFromNow = (n: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + n);
-    return d;
-  };
-  const daysAgo = (n: number) => daysFromNow(-n);
-
-  // Permits
-  const [p1, p2, p3, p4, p5, p6, p7] = await db.insert(permits).values([
+  // ── Permits (realistic Houston jurisdictions & permit numbers) ──
+  const [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15] = await db.insert(permits).values([
+    // Heights Medical Plaza — City of Houston
     {
       projectId: proj1.id,
-      name: 'Building Permit - Foundation',
+      name: 'New Construction - Medical Office (3-Story)',
       type: 'Building',
-      jurisdiction: 'Houston',
-      authority: 'City of Houston - PWE',
-      permitNumber: 'BP-2024-001234',
+      jurisdiction: 'City of Houston',
+      authority: 'City of Houston - Public Works & Engineering',
+      permitNumber: 'CB25-03847',
       status: 'under-review',
-      daysInQueue: 12,
-      submittedAt: daysAgo(12),
-      expiryDate: daysFromNow(45),
-      feeBudgeted: '3200',
+      daysInQueue: 18,
+      submittedAt: daysAgo(18),
+      expiryDate: daysFromNow(180),
+      feeBudgeted: '12400',
+    },
+    {
+      projectId: proj1.id,
+      name: 'Electrical - Main Switchgear & Distribution',
+      type: 'Electrical',
+      jurisdiction: 'City of Houston',
+      authority: 'City of Houston - Public Works & Engineering',
+      permitNumber: 'CE25-11293',
+      status: 'info-requested',
+      daysInQueue: 32,
+      submittedAt: daysAgo(32),
+      expiryDate: daysFromNow(60),
+      feeBudgeted: '3850',
+    },
+    {
+      projectId: proj1.id,
+      name: 'Fire Alarm & Suppression System',
+      type: 'Fire',
+      jurisdiction: 'City of Houston',
+      authority: 'Houston Fire Department - Fire Marshal',
+      permitNumber: 'CF25-04521',
+      status: 'under-review',
+      daysInQueue: 14,
+      submittedAt: daysAgo(14),
+      expiryDate: null,
+      feeBudgeted: '2200',
+    },
+    {
+      projectId: proj1.id,
+      name: 'Plumbing - Medical Gas & Domestic Water',
+      type: 'Plumbing',
+      jurisdiction: 'City of Houston',
+      authority: 'City of Houston - Public Works & Engineering',
+      permitNumber: 'CP25-07834',
+      status: 'approved',
+      daysInQueue: 11,
+      submittedAt: daysAgo(22),
+      expiryDate: daysFromNow(365),
+      feeBudgeted: '1950',
+      feeActual: '2050',
+    },
+
+    // Katy Freeway Retail Center — Harris County + City of Houston
+    {
+      projectId: proj2.id,
+      name: 'Shell Building - Retail Strip (12,000 SF)',
+      type: 'Building',
+      jurisdiction: 'Harris County',
+      authority: 'Harris County Permits Office',
+      permitNumber: 'HC25-BLD-08821',
+      status: 'under-review',
+      daysInQueue: 25,
+      submittedAt: daysAgo(25),
+      expiryDate: daysFromNow(90),
+      feeBudgeted: '7600',
     },
     {
       projectId: proj2.id,
-      name: 'Electrical Permit - Main Panel',
-      type: 'Electrical',
+      name: 'HVAC - RTU Installation (6 Units)',
+      type: 'Mechanical',
       jurisdiction: 'Harris County',
-      authority: 'HCPID',
-      permitNumber: 'EP-2024-005678',
-      status: 'info-requested',
-      daysInQueue: 28,
-      submittedAt: daysAgo(28),
-      expiryDate: daysFromNow(15),
-      feeBudgeted: '1850',
-    },
-    {
-      projectId: proj3.id,
-      name: 'Plumbing Permit - Water Lines',
-      type: 'Plumbing',
-      jurisdiction: 'Houston',
-      authority: 'City of Houston - PWE',
-      permitNumber: 'PP-2024-003456',
-      status: 'approved',
+      authority: 'Harris County Permits Office',
+      permitNumber: 'HC25-MEC-03392',
+      status: 'pending',
       daysInQueue: 8,
       submittedAt: daysAgo(8),
       expiryDate: daysFromNow(120),
-      feeBudgeted: '950',
-      feeActual: '980',
-    },
-    {
-      projectId: proj4.id,
-      name: 'HVAC Permit - Ductwork',
-      type: 'Mechanical',
-      jurisdiction: 'Austin',
-      authority: 'City of Austin - DSD',
-      permitNumber: 'MP-2024-007890',
-      status: 'pending',
-      daysInQueue: 35,
-      submittedAt: daysAgo(35),
-      expiryDate: daysFromNow(7),
       feeBudgeted: '2100',
     },
     {
-      projectId: proj5.id,
-      name: 'Fire Alarm Permit',
-      type: 'Fire',
-      jurisdiction: 'Houston',
-      authority: 'Houston Fire Department',
-      permitNumber: 'FP-2024-002345',
-      status: 'under-review',
-      daysInQueue: 5,
-      submittedAt: daysAgo(5),
-      expiryDate: null,
-      feeBudgeted: '750',
+      projectId: proj2.id,
+      name: 'Grease Trap & Plumbing - Restaurant Tenant',
+      type: 'Plumbing',
+      jurisdiction: 'Harris County',
+      authority: 'Harris County Permits Office',
+      permitNumber: 'HC25-PLM-05567',
+      status: 'corrections-required',
+      daysInQueue: 41,
+      submittedAt: daysAgo(41),
+      expiryDate: daysFromNow(30),
+      feeBudgeted: '1400',
     },
+
+    // Sugar Land Town Square Hotel — City of Sugar Land
     {
-      projectId: proj1.id,
-      name: 'Structural Permit - Steel Frame',
+      projectId: proj3.id,
+      name: 'New Construction - 5-Story Hotel (120 Keys)',
       type: 'Building',
-      jurisdiction: 'Houston',
-      authority: 'City of Houston - PWE',
-      permitNumber: 'BP-2024-001567',
+      jurisdiction: 'City of Sugar Land',
+      authority: 'Sugar Land Development Services',
+      permitNumber: 'SL25-NB-00412',
       status: 'under-review',
-      daysInQueue: 22,
-      submittedAt: daysAgo(22),
-      expiryDate: daysFromNow(25),
-      feeBudgeted: '4400',
+      daysInQueue: 45,
+      submittedAt: daysAgo(45),
+      expiryDate: daysFromNow(180),
+      feeBudgeted: '28500',
     },
     {
       projectId: proj3.id,
-      name: 'Electrical Permit - Sub-panels',
-      type: 'Electrical',
-      jurisdiction: 'Houston',
-      authority: 'City of Houston - PWE',
-      permitNumber: 'EP-2024-005890',
+      name: 'Elevator Installation (2 Passenger + 1 Service)',
+      type: 'Building',
+      jurisdiction: 'State of Texas',
+      authority: 'TDLR - Elevator Division',
+      permitNumber: 'TDLR-ELV-2025-88432',
       status: 'pending',
-      daysInQueue: 3,
-      submittedAt: daysAgo(3),
-      expiryDate: daysFromNow(90),
-      feeBudgeted: '1200',
+      daysInQueue: 15,
+      submittedAt: daysAgo(15),
+      expiryDate: null,
+      feeBudgeted: '4200',
+    },
+    {
+      projectId: proj3.id,
+      name: 'Fire Sprinkler System - Hotel',
+      type: 'Fire',
+      jurisdiction: 'Fort Bend County',
+      authority: 'Fort Bend County Fire Marshal',
+      permitNumber: 'FBC25-FP-01193',
+      status: 'info-requested',
+      daysInQueue: 28,
+      submittedAt: daysAgo(28),
+      expiryDate: daysFromNow(45),
+      feeBudgeted: '5600',
+    },
+
+    // Pearland Medical Office — City of Pearland
+    {
+      projectId: proj4.id,
+      name: 'Tenant Improvement - Medical Office (8,200 SF)',
+      type: 'Building',
+      jurisdiction: 'City of Pearland',
+      authority: 'Pearland Community Development',
+      permitNumber: 'PL25-COM-02847',
+      status: 'approved',
+      daysInQueue: 14,
+      submittedAt: daysAgo(21),
+      expiryDate: daysFromNow(365),
+      feeBudgeted: '4100',
+      feeActual: '4100',
+    },
+    {
+      projectId: proj4.id,
+      name: 'Mechanical - AHU & Ductwork Modifications',
+      type: 'Mechanical',
+      jurisdiction: 'City of Pearland',
+      authority: 'Pearland Community Development',
+      permitNumber: 'PL25-MEC-01122',
+      status: 'under-review',
+      daysInQueue: 10,
+      submittedAt: daysAgo(10),
+      expiryDate: daysFromNow(120),
+      feeBudgeted: '1800',
+    },
+
+    // Woodlands Mixed-Use — The Woodlands Township / Montgomery County
+    {
+      projectId: proj5.id,
+      name: 'Mixed-Use Building - 4-Story (Retail + Office)',
+      type: 'Building',
+      jurisdiction: 'Montgomery County',
+      authority: 'Montgomery County Permits',
+      permitNumber: 'MC25-COM-04471',
+      status: 'under-review',
+      daysInQueue: 38,
+      submittedAt: daysAgo(38),
+      expiryDate: daysFromNow(120),
+      feeBudgeted: '18900',
+    },
+    {
+      projectId: proj5.id,
+      name: 'Site Work & Detention Pond',
+      type: 'Building',
+      jurisdiction: 'Montgomery County',
+      authority: 'MC Engineering / San Jacinto River Authority',
+      permitNumber: 'MC25-CIV-02238',
+      status: 'corrections-required',
+      daysInQueue: 52,
+      submittedAt: daysAgo(52),
+      expiryDate: daysFromNow(14),
+      feeBudgeted: '6500',
+    },
+
+    // Memorial Hermann Clinic TI — City of Houston
+    {
+      projectId: proj6.id,
+      name: 'Tenant Improvement - Clinic Suite (4,500 SF)',
+      type: 'Building',
+      jurisdiction: 'City of Houston',
+      authority: 'City of Houston - Public Works & Engineering',
+      permitNumber: 'CB25-09112',
+      status: 'approved',
+      daysInQueue: 9,
+      submittedAt: daysAgo(16),
+      expiryDate: daysFromNow(365),
+      feeBudgeted: '2800',
+      feeActual: '2800',
     },
   ]).returning();
 
-  console.log('✓ Permits');
+  console.log('  Permits (15 across 6 projects, 7 jurisdictions)');
 
-  // Rules
+  // ── Rules ──────────────────────────────────────────────────────
   await db.insert(rules).values([
     {
       name: 'Overdue Escalation',
@@ -180,7 +326,7 @@ async function seed() {
       triggerCondition: 'days_in_queue > avg_days + 20',
       actionTemplate: 'Create urgent task + draft escalation email',
       enabled: true,
-      tasksCreated: 4,
+      tasksCreated: 6,
     },
     {
       name: 'Slow Review Alert',
@@ -188,7 +334,7 @@ async function seed() {
       triggerCondition: 'days_in_queue > avg_days',
       actionTemplate: 'Create high-priority task + Slack alert',
       enabled: true,
-      tasksCreated: 12,
+      tasksCreated: 14,
     },
     {
       name: 'Info Request Response',
@@ -196,7 +342,7 @@ async function seed() {
       triggerCondition: "status = 'info-requested'",
       actionTemplate: 'Create urgent task with AHJ deadline',
       enabled: true,
-      tasksCreated: 7,
+      tasksCreated: 8,
     },
     {
       name: 'Hearing Prep Reminder',
@@ -212,7 +358,7 @@ async function seed() {
       triggerCondition: "status = 'approved'",
       actionTemplate: 'Archive permit + Slack notification',
       enabled: true,
-      tasksCreated: 9,
+      tasksCreated: 11,
     },
     {
       name: 'Expiry Warning',
@@ -220,60 +366,86 @@ async function seed() {
       triggerCondition: 'days_until_expiry <= 30',
       actionTemplate: 'Create high-priority renewal task',
       enabled: true,
-      tasksCreated: 2,
+      tasksCreated: 4,
     },
   ]);
 
-  console.log('✓ Rules');
+  console.log('  Rules (6)');
 
-  // Tasks
+  // ── Tasks ──────────────────────────────────────────────────────
   await db.insert(tasks).values([
+    // Auto-generated from rules
     {
-      projectId: proj2.id,
+      projectId: proj1.id,
       permitId: p2.id,
-      title: 'Respond to HCPID info request — electrical load calcs needed',
+      title: 'Respond to COH info request — updated load calc schedule required',
       type: 'auto',
       priority: 'urgent',
       assignee: pm1.id,
       dueDate: daysFromNow(3),
       status: 'pending',
-      notes: 'HCPID requested updated electrical load calculations. Deadline is 10 days from request.',
+      notes: 'City of Houston requested revised electrical load calculations showing medical equipment loads. 10-day deadline from request date.',
     },
     {
-      projectId: proj4.id,
-      permitId: p4.id,
-      title: 'Follow up: HVAC permit 35 days — exceeds Austin avg by 17d',
+      projectId: proj3.id,
+      permitId: p10.id,
+      title: 'Respond to Fort Bend Fire Marshal — hydraulic calcs needed',
       type: 'auto',
-      priority: 'high',
-      assignee: pm2.id,
-      dueDate: daysFromNow(2),
-      status: 'pending',
-    },
-    {
-      projectId: proj1.id,
-      permitId: p6.id,
-      title: 'Escalate steel frame permit — 22 days, approaching threshold',
-      type: 'auto',
-      priority: 'high',
-      assignee: pm1.id,
+      priority: 'urgent',
+      assignee: pm3.id,
       dueDate: daysFromNow(5),
       status: 'pending',
+      notes: 'FBC Fire Marshal requires updated hydraulic calculations for hotel sprinkler system. Submit via ePlans portal.',
     },
     {
-      projectId: proj2.id,
-      permitId: p2.id,
-      title: 'Renew EP-2024-005678 — expires in 15 days',
+      projectId: proj3.id,
+      permitId: p8.id,
+      title: 'Escalate Sugar Land hotel permit — 45 days, exceeds avg by 27d',
       type: 'auto',
       priority: 'urgent',
       assignee: pm1.id,
+      dueDate: daysFromNow(1),
+      status: 'pending',
+      notes: 'Sugar Land avg for new construction is 18 days. This permit is at 45 days. Contact Development Services director.',
+    },
+    {
+      projectId: proj5.id,
+      permitId: p14.id,
+      title: 'Resubmit corrected detention pond calcs — MC Engineering',
+      type: 'auto',
+      priority: 'high',
+      assignee: pm2.id,
+      dueDate: daysFromNow(7),
+      status: 'pending',
+      notes: 'Montgomery County returned site work plans with corrections. Detention pond volume calculations do not meet SJRA requirements.',
+    },
+    {
+      projectId: proj2.id,
+      permitId: p7.id,
+      title: 'Resubmit grease trap plans — Harris County corrections',
+      type: 'auto',
+      priority: 'high',
+      assignee: pm2.id,
+      dueDate: daysFromNow(4),
+      status: 'pending',
+      notes: 'Harris County requires grease interceptor sizing per UPC Table 10-3. Current design undersized for restaurant tenant.',
+    },
+    {
+      projectId: proj5.id,
+      permitId: p14.id,
+      title: 'Renew site work permit — expires in 14 days',
+      type: 'auto',
+      priority: 'urgent',
+      assignee: pm2.id,
       dueDate: daysFromNow(10),
       status: 'pending',
-      notes: 'Critical: permit expiry imminent. Contact HCPID to request extension.',
+      notes: 'MC25-CIV-02238 expires soon. Must resubmit or request extension before expiry.',
     },
+    // Manual tasks
     {
       projectId: proj1.id,
       permitId: p1.id,
-      title: 'Upload revised foundation drawings to Houston portal',
+      title: 'Upload revised foundation engineering to COH ePlans',
       type: 'manual',
       priority: 'high',
       assignee: pm1.id,
@@ -281,72 +453,143 @@ async function seed() {
       status: 'pending',
     },
     {
-      projectId: proj3.id,
-      permitId: p3.id,
-      title: 'Schedule final plumbing inspection',
+      projectId: proj2.id,
+      permitId: p5.id,
+      title: 'Schedule pre-construction meeting with Harris County inspector',
       type: 'manual',
       priority: 'medium',
       assignee: pm2.id,
       dueDate: daysFromNow(14),
+      status: 'pending',
+    },
+    {
+      projectId: proj4.id,
+      permitId: p11.id,
+      title: 'Coordinate MEP rough-in inspection with Pearland',
+      type: 'manual',
+      priority: 'medium',
+      assignee: pm3.id,
+      dueDate: daysFromNow(10),
       status: 'completed',
     },
     {
-      projectId: proj5.id,
-      permitId: p5.id,
-      title: 'Confirm HFD plan review appointment',
+      projectId: proj6.id,
+      permitId: p15.id,
+      title: 'Submit approved plans to Memorial Hermann facilities',
+      type: 'manual',
+      priority: 'low',
+      assignee: pm3.id,
+      dueDate: daysFromNow(5),
+      status: 'pending',
+    },
+    {
+      projectId: proj3.id,
+      permitId: p9.id,
+      title: 'Follow up with TDLR on elevator permit timeline',
       type: 'manual',
       priority: 'medium',
-      assignee: pm2.id,
-      dueDate: daysFromNow(10),
+      assignee: pm1.id,
+      dueDate: daysFromNow(7),
       status: 'pending',
     },
   ]);
 
-  console.log('✓ Tasks');
+  console.log('  Tasks (11 — 6 auto, 5 manual)');
 
-  // Inspections
+  // ── Inspections ────────────────────────────────────────────────
   await db.insert(inspections).values([
     {
-      permitId: p1.id,
-      type: 'Foundation',
-      scheduledDate: daysFromNow(10),
-      result: null,
+      permitId: p4.id,
+      type: 'Underground Plumbing',
+      scheduledDate: daysAgo(8),
+      result: 'pass',
       inspectorName: 'Tom Rivera',
       inspectorContact: 'trivera@houstontx.gov',
-    },
-    {
-      permitId: p3.id,
-      type: 'Rough-in Plumbing',
-      scheduledDate: daysAgo(5),
-      result: 'pass',
-      inspectorName: 'Janet Okafor',
-      inspectorContact: 'jokafor@houstontx.gov',
-      notes: 'All lines pressure-tested, passed.',
-    },
-    {
-      permitId: p3.id,
-      type: 'Final Plumbing',
-      scheduledDate: daysFromNow(14),
-      result: null,
-      inspectorName: 'Janet Okafor',
-      inspectorContact: 'jokafor@houstontx.gov',
+      notes: 'All underground water and waste lines passed pressure test.',
     },
     {
       permitId: p4.id,
-      type: 'Mechanical Rough-in',
-      scheduledDate: daysFromNow(20),
+      type: 'Rough-in Plumbing',
+      scheduledDate: daysAgo(3),
+      result: 'pass',
+      inspectorName: 'Tom Rivera',
+      inspectorContact: 'trivera@houstontx.gov',
+      notes: 'Medical gas lines tested per NFPA 99. Passed.',
+    },
+    {
+      permitId: p1.id,
+      type: 'Foundation',
+      scheduledDate: daysFromNow(12),
+      result: null,
+      inspectorName: 'James Whitfield',
+      inspectorContact: 'jwhitfield@houstontx.gov',
+    },
+    {
+      permitId: p11.id,
+      type: 'Framing',
+      scheduledDate: daysAgo(2),
+      result: 'pass',
+      inspectorName: 'Robert Garza',
+      inspectorContact: 'rgarza@pearlandtx.gov',
+      notes: 'Steel stud framing and fire-rated assemblies verified.',
+    },
+    {
+      permitId: p11.id,
+      type: 'MEP Rough-in',
+      scheduledDate: daysFromNow(8),
+      result: null,
+      inspectorName: 'Robert Garza',
+      inspectorContact: 'rgarza@pearlandtx.gov',
+    },
+    {
+      permitId: p15.id,
+      type: 'Final',
+      scheduledDate: daysFromNow(18),
+      result: null,
+      inspectorName: 'Janet Okafor',
+      inspectorContact: 'jokafor@houstontx.gov',
+    },
+    {
+      permitId: p5.id,
+      type: 'Foundation',
+      scheduledDate: daysFromNow(25),
       result: null,
       inspectorName: null,
       inspectorContact: null,
     },
+    {
+      permitId: p8.id,
+      type: 'Foundation',
+      scheduledDate: daysFromNow(30),
+      result: null,
+      inspectorName: null,
+      inspectorContact: null,
+      notes: 'Pending permit approval — tentative date.',
+    },
   ]);
 
-  console.log('✓ Inspections');
+  console.log('  Inspections (8 — 3 completed, 5 scheduled)');
 
-  // Audit log
+  // ── Audit Log ──────────────────────────────────────────────────
   await db.insert(auditLog).values([
     {
-      permitId: p3.id,
+      permitId: p4.id,
+      actorType: 'agent',
+      action: 'status_changed',
+      oldValue: 'under-review',
+      newValue: 'approved',
+      timestamp: daysAgo(4),
+    },
+    {
+      permitId: p11.id,
+      actorType: 'agent',
+      action: 'status_changed',
+      oldValue: 'under-review',
+      newValue: 'approved',
+      timestamp: daysAgo(3),
+    },
+    {
+      permitId: p15.id,
       actorType: 'agent',
       action: 'status_changed',
       oldValue: 'under-review',
@@ -359,100 +602,156 @@ async function seed() {
       action: 'status_changed',
       oldValue: 'under-review',
       newValue: 'info-requested',
-      timestamp: daysAgo(3),
+      timestamp: daysAgo(5),
     },
     {
       permitId: p2.id,
       actorType: 'agent',
       action: 'rule_triggered',
-      newValue: 'Rule: Info Request Response → task created',
+      newValue: 'Rule: Info Request Response — task created for Sarah Chen',
+      timestamp: daysAgo(5),
+    },
+    {
+      permitId: p10.id,
+      actorType: 'agent',
+      action: 'status_changed',
+      oldValue: 'under-review',
+      newValue: 'info-requested',
       timestamp: daysAgo(3),
     },
     {
-      permitId: p4.id,
+      permitId: p10.id,
       actorType: 'agent',
       action: 'rule_triggered',
-      newValue: 'Rule: Slow Review Alert → task created',
+      newValue: 'Rule: Info Request Response — task created for Jessica Reyes',
+      timestamp: daysAgo(3),
+    },
+    {
+      permitId: p7.id,
+      actorType: 'agent',
+      action: 'status_changed',
+      oldValue: 'under-review',
+      newValue: 'corrections-required',
+      timestamp: daysAgo(6),
+    },
+    {
+      permitId: p14.id,
+      actorType: 'agent',
+      action: 'status_changed',
+      oldValue: 'under-review',
+      newValue: 'corrections-required',
+      timestamp: daysAgo(8),
+    },
+    {
+      permitId: p8.id,
+      actorType: 'agent',
+      action: 'rule_triggered',
+      newValue: 'Rule: Overdue Escalation — 45 days exceeds Sugar Land avg (18d) by 27 days',
+      timestamp: daysAgo(1),
+    },
+    {
+      permitId: p14.id,
+      actorType: 'agent',
+      action: 'rule_triggered',
+      newValue: 'Rule: Expiry Warning — MC25-CIV-02238 expires in 14 days',
       timestamp: daysAgo(1),
     },
   ]);
 
-  console.log('✓ Audit log');
+  console.log('  Audit log (11 entries)');
 
-  // Email Drafts — agent-generated, pending review
+  // ── Email Drafts ───────────────────────────────────────────────
   await db.insert(emailDrafts).values([
     {
-      permitId: p4.id,
-      subject: 'Urgent: Permit Review Escalation - MP-2024-007890',
-      body: `Dear City of Austin Development Services,
+      permitId: p8.id,
+      subject: 'Expedited Review Request - Permit SL25-NB-00412 (Sugar Land Town Square Hotel)',
+      body: `Dear Sugar Land Development Services,
 
-I am writing to request an expedited review of permit application MP-2024-007890 for the University Science Building project.
+I am writing to request an expedited review of permit application SL25-NB-00412 for the Sugar Land Town Square Hotel project.
 
-This permit has been under review for 35 days, which exceeds the typical processing time of 18 days for Mechanical permits in Austin.
+This application has been under review for 45 days, which significantly exceeds the typical 18-day processing time for new construction permits in your jurisdiction. The delay is causing substantial schedule impact and daily carrying costs.
 
-The delay is impacting our construction schedule and causing significant carrying costs. We kindly request this application be prioritized for review.
+Project Details:
+- Project: Sugar Land Town Square Hotel (120 Keys, 5-Story)
+- Permit Type: New Construction - Building
+- Submitted: ${daysAgo(45).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+- General Contractor: Maxx Builders
 
-Please let us know if any additional documentation is required to expedite this process.
+We have not received any correction notices or requests for additional information, so we believe all submittal requirements have been met.
+
+Could you please provide:
+1. Current review status and any outstanding items
+2. Estimated completion date for plan review
+3. Whether an in-person meeting with the plan reviewer would help expedite
 
 Thank you for your attention to this matter.
 
 Best regards,
 [Your Name]
-[Company Name]
+Maxx Builders
 [Phone]`,
-      recipient: 'permits@austintexas.gov',
-      recipientName: 'Austin Development Services',
+      recipient: 'permits@sugarlandtx.gov',
+      recipientName: 'Sugar Land Development Services',
       templateType: 'escalation',
       createdBy: 'agent',
       status: 'pending-review',
     },
     {
       permitId: p2.id,
-      subject: 'Re: Additional Information Request - EP-2024-005678',
-      body: `Dear Harris County Permit Office,
+      subject: 'Re: Additional Information Required - Permit CE25-11293',
+      body: `Dear City of Houston Plan Review,
 
-Thank you for your review of permit application EP-2024-005678 for the Memorial Hospital Wing project.
+Thank you for your review of permit application CE25-11293 for the Heights Medical Plaza project.
 
-In response to your request for additional information, we are preparing the updated electrical load calculations you requested and anticipate submitting the revised documents within 5 business days.
+In response to your request, we are preparing the revised electrical load calculations incorporating the updated medical equipment schedule. Specifically:
 
-We understand the urgency given the current status and will prioritize this immediately. Please let us know if you need any clarification in the meantime.
+1. Updated NEC Article 220 load calculations reflecting medical imaging equipment (MRI, CT, X-ray)
+2. Revised panel schedules showing dedicated circuits per NEC 517
+3. Emergency power distribution updated per NFPA 110
+
+We anticipate submitting the revised documents within 5 business days via ePlans.
+
+Please let us know if additional information is needed.
 
 Best regards,
 [Your Name]
-[Company Name]`,
-      recipient: 'permits@harriscountytx.gov',
-      recipientName: 'Harris County Permit Office',
+Maxx Builders`,
+      recipient: 'permits@houstontx.gov',
+      recipientName: 'City of Houston Plan Review',
       templateType: 'info-response',
       createdBy: 'agent',
       status: 'pending-review',
     },
     {
-      permitId: p6.id,
-      subject: 'Status Inquiry - Permit BP-2024-001567',
-      body: `Dear City of Houston Permit Office,
+      permitId: p13.id,
+      subject: 'Status Inquiry - Permit MC25-COM-04471 (Woodlands Mixed-Use Phase II)',
+      body: `Dear Montgomery County Permits,
 
-I am writing to inquire about the current status of permit application BP-2024-001567 for the Downtown Office Tower project, submitted 22 days ago.
+I am writing to inquire about the current status of permit application MC25-COM-04471 for the Woodlands Mixed-Use Phase II project, submitted 38 days ago.
 
 Could you please provide an update on:
-1. Current review status
-2. Estimated completion date
+1. Current review status and reviewer assignment
+2. Estimated completion date for plan review
 3. Any pending requirements or corrections needed
+
+The project team is available for a plan review meeting at your convenience if that would help resolve any open questions.
 
 Thank you for your assistance.
 
 Best regards,
 [Your Name]
-[Company Name]`,
-      recipient: 'permits@houstontx.gov',
-      recipientName: 'City of Houston Permit Office',
+O'Donnell/Snider Construction`,
+      recipient: 'permits@mctx.org',
+      recipientName: 'Montgomery County Permits',
       templateType: 'status-check',
       createdBy: 'agent',
       status: 'draft',
     },
   ]);
 
-  console.log('✓ Email drafts');
-  console.log('\n✅ Seed complete — database is ready.');
+  console.log('  Email drafts (3 — 2 pending review, 1 draft)');
+  console.log('\nSeed complete — database is ready for demo.');
+  console.log('Login: admin@permitiq.dev / permitiq-dev');
 
   await client.end();
 }

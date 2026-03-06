@@ -177,3 +177,83 @@ body::before {
     @apply bg-accent text-bg;
   }
 }
+
+/* ─── Mobile Responsive ─────────────────────────────────────────── */
+
+/* Stat cards: single column on small screens */
+@media (max-width: 639px) {
+  .stat-card {
+    padding: 0.75rem;
+  }
+
+  .stat-card .text-2xl {
+    font-size: 1.25rem;
+  }
+
+  /* Make tables horizontally scrollable */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Stack filter controls vertically */
+  .flex.flex-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Full-width buttons on mobile */
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Reduce padding on panels */
+  .panel {
+    border-radius: 0.5rem;
+  }
+
+  .panel-header {
+    padding: 0.75rem;
+  }
+
+  /* Toast: full-width at bottom */
+  .toast {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    width: auto;
+  }
+}
+
+/* Medium screens: adjust grid layouts */
+@media (max-width: 767px) {
+  /* Ensure main content fills the screen without sidebar */
+  main {
+    padding: 0.75rem !important;
+  }
+}
+
+/* Hide grid overlay on mobile for performance */
+@media (max-width: 639px) {
+  body::before {
+    display: none;
+  }
+}
+
+/* Permit tracker table: card layout on mobile */
+@media (max-width: 767px) {
+  /* Improve touch targets */
+  button, a, select, input {
+    min-height: 2.5rem;
+  }
+
+  select {
+    font-size: 1rem;
+  }
+
+  input {
+    font-size: 1rem;
+  }
+}
