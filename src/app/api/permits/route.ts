@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc, sql, and, inArray } from 'drizzle-orm';
 import { getDb, permits, projects, documents, inspections, fees, projectMembers, checklistItems, jurisdictions } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
+import { cache, CacheKeys } from '@/lib/cache/redis';
 
 // Jurisdiction average review days — used to colour-code days-in-queue
 const JURISDICTION_AVG: Record<string, number> = {
@@ -195,6 +196,11 @@ export async function POST(request: NextRequest) {
         expiryDate: expiryDate ? new Date(expiryDate) : null,
       })
       .returning();
+
+    await Promise.all([
+      cache.del(CacheKeys.permitStats()),
+      cache.del(CacheKeys.analyticsKpis()),
+    ]);
 
     return NextResponse.json(permit, { status: 201 });
   } catch (error) {

@@ -75,7 +75,7 @@ The working HTML/CSS/JS prototype (`permit-agent-dashboard.html`) contains:
    - Demo fallback responses for Harris County electrical, Austin HVAC, NYC DOB plumbing
    - Suggestion chips on load, typing indicator, searching animation
 
-### Current Build Coverage: 24%
+### Current Build Coverage: 47%
 
 | Feature | Status |
 |---|---|
@@ -88,13 +88,13 @@ The working HTML/CSS/JS prototype (`permit-agent-dashboard.html`) contains:
 | Fee Tracking & Payment Log | ❌ Missing — Phase 3 |
 | Application Submission Workflow | ❌ Missing — Phase 3 |
 | Multi-User / Role-Based Access | ❌ Missing — Phase 3 |
-| Permit Expiry Tracking | ⚠️ Partial — Phase 1 |
+| Permit Expiry Tracking | ✅ Built |
 | Cost Impact Calculator | ❌ Missing — Phase 2 |
 | Email Draft Review UI | ⚠️ Partial — Phase 2 |
 | Audit Trail / Permit History | ❌ Missing — Phase 2 |
-| Search & Filter on Permit Table | ❌ Missing — Phase 1 |
+| Search & Filter on Permit Table | ✅ Built |
 | Procore / PM Integration | ❌ Missing — Phase 3 |
-| Onboarding Flow & Empty States | ❌ Missing — Phase 1 |
+| Onboarding Flow & Empty States | ✅ Built |
 | Mobile Responsive Layout | ❌ Missing — Phase 4 |
 
 ---

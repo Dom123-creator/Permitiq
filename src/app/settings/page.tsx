@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { AccountSettings } from '@/components/settings/AccountSettings';
+import { AgentScheduleSettings } from '@/components/settings/AgentScheduleSettings';
 
 export const metadata = { title: 'Settings — PermitIQ' };
 
@@ -18,6 +19,12 @@ export default async function SettingsPage() {
       <AccountSettings />
       {divider}
       <NotificationSettings />
+      {(isOwner || session.user.role === 'admin') && (
+        <>
+          {divider}
+          <AgentScheduleSettings />
+        </>
+      )}
       {isOwner && (
         <>
           {divider}

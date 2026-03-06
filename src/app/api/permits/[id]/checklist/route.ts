@@ -272,6 +272,31 @@ function getJurisdictionItems(type: string, jur: string): DefaultItem[] {
     ];
   }
 
+  // San Antonio
+  if (jur.includes('san antonio') || jur.includes('bexar')) {
+    if (type === 'building') return [
+      { label: 'COSA Development Services Department (DSD) online submission', category: 'steps', required: true },
+      { label: 'TAS (Texas Accessibility Standards) review filing', category: 'documents', required: true },
+      { label: 'SAWS (San Antonio Water System) coordination', category: 'steps', required: true },
+      { label: 'CPS Energy service entrance review', category: 'documents', required: true },
+      { label: 'Historic Design Review (if in historic district)', category: 'documents', required: false },
+      { label: 'Edwards Aquifer compliance (if in recharge zone)', category: 'documents', required: false },
+    ];
+    if (type === 'electrical') return [
+      { label: 'COSA DSD online submission', category: 'steps', required: true },
+      { label: 'CPS Energy service entrance approval', category: 'documents', required: true },
+    ];
+    if (type === 'fire') return [
+      { label: 'COSA DSD online submission', category: 'steps', required: true },
+      { label: 'San Antonio Fire Department plan review', category: 'steps', required: true },
+      { label: 'Knox box installation coordination', category: 'steps', required: true },
+    ];
+    return [
+      { label: 'COSA DSD online submission', category: 'steps', required: true },
+      { label: 'TAS accessibility compliance', category: 'documents', required: true },
+    ];
+  }
+
   // Generic — no jurisdiction-specific items needed
   return [];
 }

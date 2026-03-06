@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb, permits } from '@/lib/db';
+import { cache, CacheKeys, CacheTTL } from '@/lib/cache/redis';
 
 const JURISDICTION_AVG: Record<string, number> = {
   Houston: 15,
@@ -22,6 +23,8 @@ function daysInQueue(submittedAt: Date | null, stored: number | null): number {
 
 export async function GET() {
   try {
+    const cached = await cache.get<{ total: number; underReview: number; overdue: number; expiringWithin30: number }>(CacheKeys.permitStats());
+    if (cached) return NextResponse.json(cached);
     const db = getDb();
     const rows = await db
       .select({
@@ -57,7 +60,9 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ total, underReview, overdue, expiringWithin30 });
+    const stats = { total, underReview, overdue, expiringWithin30 };
+    await cache.set(CacheKeys.permitStats(), stats, CacheTTL.MEDIUM);
+    return NextResponse.json(stats);
   } catch (error) {
     console.error('GET /api/permits/stats failed:', error);
     const msg = error instanceof Error ? error.message : '';

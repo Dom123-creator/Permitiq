@@ -278,6 +278,16 @@ export const jurisdictions = pgTable('jurisdictions', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Saved filter presets per user
+export const savedFilters = pgTable('saved_filters', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  filters: text('filters').notNull(), // JSON string of filter state
+  isDefault: boolean('is_default').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Workspace branding settings — single-row table
 export const workspaceSettings = pgTable('workspace_settings', {
   id: uuid('id').primaryKey().defaultRandom(),

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { eq, and, sql, desc, ne } from 'drizzle-orm';
 import { getDb, permits, projects, inspections, tasks, auditLog, users, fees } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
+import { cache, CacheKeys, CacheTTL } from '@/lib/cache/redis';
 
 const JURISDICTION_AVG: Record<string, number> = {
   Houston: 15,
@@ -28,6 +29,9 @@ export async function GET() {
   if (sessionOrError instanceof NextResponse) return sessionOrError;
 
   try {
+    const cached = await cache.get<Record<string, unknown>>(CacheKeys.analyticsKpis());
+    if (cached) return NextResponse.json(cached);
+
     const db = getDb();
 
     // ── 1. All active permits with project data ──────────────────────────────
@@ -227,7 +231,7 @@ export async function GET() {
       }))
       .sort((a, b) => b.delayCost - a.delayCost);
 
-    return NextResponse.json({
+    const response = {
       kpis: {
         totalActivePermits,
         overduePermits,
@@ -247,7 +251,10 @@ export async function GET() {
         ...a,
         actorName: a.actorType === 'agent' ? 'PermitIQ Agent' : (a.actorName ?? 'Unknown'),
       })),
-    });
+    };
+
+    await cache.set(CacheKeys.analyticsKpis(), response, CacheTTL.MEDIUM);
+    return NextResponse.json(response);
   } catch (error) {
     console.error('GET /api/analytics failed:', error);
     return NextResponse.json({ error: 'Failed to load analytics' }, { status: 500 });

@@ -1,0 +1,278 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PermitIQ API",
+    "version": "1.0.0",
+    "description": "REST API for PermitIQ — AI-powered construction permit tracking and management.",
+    "contact": { "name": "PermitIQ Support" }
+  },
+  "servers": [
+    { "url": "/api/v1", "description": "v1 API" }
+  ],
+  "security": [
+    { "apiKey": [] },
+    { "session": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API key with piq_ prefix. Create keys in Settings > Developer Portal."
+      },
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "authjs.session-token",
+        "description": "NextAuth session cookie (browser sessions)."
+      }
+    },
+    "schemas": {
+      "Permit": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "projectId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["Building", "Electrical", "Plumbing", "Mechanical", "Fire"] },
+          "jurisdiction": { "type": "string" },
+          "authority": { "type": "string", "nullable": true },
+          "permitNumber": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["pending", "under-review", "info-requested", "approved", "rejected"] },
+          "daysInQueue": { "type": "integer" },
+          "submittedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "expiryDate": { "type": "string", "format": "date-time", "nullable": true },
+          "feeBudgeted": { "type": "string", "nullable": true },
+          "feeActual": { "type": "string", "nullable": true },
+          "notes": { "type": "string", "nullable": true },
+          "archived": { "type": "boolean" },
+          "submissionStatus": { "type": "string", "enum": ["draft", "submitted", "under-review", "corrections-required", "approved"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "client": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["active", "on-hold", "completed"] },
+          "dailyCarryingCost": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "projectId": { "type": "string", "format": "uuid", "nullable": true },
+          "permitId": { "type": "string", "format": "uuid", "nullable": true },
+          "type": { "type": "string", "enum": ["manual", "auto"] },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+          "status": { "type": "string", "enum": ["open", "in-progress", "completed"] },
+          "assignee": { "type": "string", "nullable": true },
+          "dueDate": { "type": "string", "format": "date-time", "nullable": true },
+          "notes": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Inspection": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "permitId": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "scheduledDate": { "type": "string", "format": "date-time", "nullable": true },
+          "result": { "type": "string", "enum": ["pass", "fail", "partial", "pending"], "nullable": true },
+          "inspectorName": { "type": "string", "nullable": true },
+          "notes": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        }
+      }
+    },
+    "headers": {
+      "RateLimit": {
+        "X-RateLimit-Limit": { "schema": { "type": "integer" }, "description": "Max requests per window" },
+        "X-RateLimit-Remaining": { "schema": { "type": "integer" }, "description": "Remaining requests" },
+        "X-RateLimit-Reset": { "schema": { "type": "integer" }, "description": "Window reset timestamp" }
+      }
+    }
+  },
+  "paths": {
+    "/permits": {
+      "get": {
+        "summary": "List permits",
+        "operationId": "listPermits",
+        "tags": ["Permits"],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by status" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated permit list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Permit" } },
+                    "meta": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "429": { "description": "Rate limited" }
+        }
+      }
+    },
+    "/permits/{id}": {
+      "get": {
+        "summary": "Get a single permit",
+        "operationId": "getPermit",
+        "tags": ["Permits"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permit details",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Permit" } } } } }
+          },
+          "404": { "description": "Permit not found" }
+        }
+      },
+      "patch": {
+        "summary": "Update a permit",
+        "operationId": "updatePermit",
+        "tags": ["Permits"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "enum": ["pending", "under-review", "info-requested", "approved", "rejected"] },
+                  "notes": { "type": "string", "maxLength": 2000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated permit" },
+          "400": { "description": "Validation error" },
+          "403": { "description": "Write scope required" },
+          "404": { "description": "Permit not found" }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "summary": "List projects",
+        "operationId": "listProjects",
+        "tags": ["Projects"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated project list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } },
+                    "meta": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks": {
+      "get": {
+        "summary": "List tasks",
+        "operationId": "listTasks",
+        "tags": ["Tasks"],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by status" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated task list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Task" } },
+                    "meta": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inspections": {
+      "get": {
+        "summary": "List inspections",
+        "operationId": "listInspections",
+        "tags": ["Inspections"],
+        "parameters": [
+          { "name": "permitId", "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Filter by permit" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated inspection list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Inspection" } },
+                    "meta": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

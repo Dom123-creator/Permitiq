@@ -44,3 +44,10 @@ drizzle/
 # Misc
 *.log
 .vercel
+
+# Playwright auth state
+tests/.auth/
+
+# Playwright
+playwright-report/
+test-results/

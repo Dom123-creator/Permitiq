@@ -4,6 +4,7 @@ import { getDb, permits, auditLog } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/guards';
 import { deliverWebhookEvent } from '@/lib/webhooks/deliver';
 import { notifyAllActiveUsers } from '@/lib/notifications/notify';
+import { cache, CacheKeys } from '@/lib/cache/redis';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -100,6 +101,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Write audit entry for expiry date changes
+    if ('expiryDate' in body) {
+      const oldExpiry = current.expiryDate ? new Date(current.expiryDate).toISOString().split('T')[0] : null;
+      const newExpiry = body.expiryDate ? new Date(body.expiryDate).toISOString().split('T')[0] : null;
+      if (oldExpiry !== newExpiry) {
+        await db.insert(auditLog).values({
+          permitId: id,
+          actorType: 'user',
+          actorId: session.user.id,
+          action: 'expiry_date_changed',
+          oldValue: oldExpiry,
+          newValue: newExpiry,
+        });
+      }
+    }
+
     // Write audit entry for submission status changes
     if (body.submissionStatus && body.submissionStatus !== current.submissionStatus) {
       await db.insert(auditLog).values({
@@ -111,6 +128,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         newValue: body.submissionStatus,
       });
     }
+
+    // Invalidate cached stats/analytics
+    await Promise.all([
+      cache.del(CacheKeys.permitStats()),
+      cache.del(CacheKeys.analyticsKpis()),
+    ]);
 
     return NextResponse.json(updated);
   } catch (error) {

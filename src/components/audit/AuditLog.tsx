@@ -66,6 +66,32 @@ export function AuditLog({ permitId, limit, showFilters = true }: AuditLogProps)
 
   const hasFilters = actorTypeFilter !== 'all' || actionFilter !== 'all' || search.trim() !== '';
 
+  const exportAuditCsv = (rows: AuditLogEntry[]) => {
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const header = 'Timestamp,Action,Description,Actor,Actor Type,Permit,Project,Old Value,New Value';
+    const lines = rows.map((e) =>
+      [
+        formatAuditTimestamp(e.timestamp),
+        getActionLabel(e.action),
+        e.description,
+        e.actorName,
+        e.actorType,
+        e.permitName ?? '',
+        e.projectName ?? '',
+        e.oldValue ?? '',
+        e.newValue ?? '',
+      ].map(escape).join(',')
+    );
+    const csv = [header, ...lines].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `permitiq-audit-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -155,9 +181,22 @@ export function AuditLog({ permitId, limit, showFilters = true }: AuditLogProps)
             </button>
           )}
 
-          <span className="text-xs text-muted ml-auto">
-            {filtered.length} of {entries.length} entries
-          </span>
+          <div className="flex items-center gap-3 ml-auto">
+            <span className="text-xs text-muted">
+              {filtered.length} of {entries.length} entries
+            </span>
+            {filtered.length > 0 && (
+              <button
+                onClick={() => exportAuditCsv(filtered)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-muted hover:text-text border border-border hover:border-muted transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export CSV
+              </button>
+            )}
+          </div>
         </div>
       )}
 

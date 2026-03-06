@@ -290,6 +290,44 @@ export function PermitTracker() {
     if (!next) setApiPermits(null);
   };
 
+  // Saved filter presets
+  const [savedPresets, setSavedPresets] = useState<{ id: string; name: string; filters: string }[]>([]);
+  const [showSavePreset, setShowSavePreset] = useState(false);
+  const [presetName, setPresetName] = useState('');
+
+  useEffect(() => {
+    fetch('/api/filters').then((r) => r.ok ? r.json() : []).then((data) => {
+      if (Array.isArray(data)) setSavedPresets(data);
+    }).catch(() => {});
+  }, []);
+
+  const savePreset = async () => {
+    if (!presetName.trim()) return;
+    const res = await fetch('/api/filters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: presetName.trim(), filters }),
+    });
+    if (res.ok) {
+      const created = await res.json();
+      setSavedPresets((prev) => [...prev, created]);
+      setPresetName('');
+      setShowSavePreset(false);
+    }
+  };
+
+  const loadPreset = (preset: { filters: string }) => {
+    try {
+      const parsed = typeof preset.filters === 'string' ? JSON.parse(preset.filters) : preset.filters;
+      setFilters(parsed);
+    } catch { /* ignore parse errors */ }
+  };
+
+  const deletePreset = async (id: string) => {
+    const res = await fetch(`/api/filters/${id}`, { method: 'DELETE' });
+    if (res.ok) setSavedPresets((prev) => prev.filter((p) => p.id !== id));
+  };
+
   // Search and filter state
   const [filters, setFilters] = useState<Filters>({
     search: '',
@@ -496,15 +534,14 @@ export function PermitTracker() {
       {/* Expiry Warning Banner */}
       {(expiryStats.critical > 0 || expiryStats.warning > 0) && (
         <div className="mb-4 p-4 bg-surface border border-border rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-warn" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-text">Permit Expiry Alerts</span>
-              </div>
-              <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <svg className="w-5 h-5 text-warn" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm font-medium text-text">Permit Expiry Alerts</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
                 {expiryStats.critical > 0 && (
                   <button
                     onClick={() => setFilters({ ...filters, expiringWithin: 30 })}
@@ -532,15 +569,14 @@ export function PermitTracker() {
                     <span className="text-xs font-medium text-accent">{expiryStats.caution} caution (60-90d)</span>
                   </button>
                 )}
-              </div>
             </div>
-            <button className="text-xs text-muted hover:text-text">View all expiring</button>
           </div>
+          <button className="text-xs text-muted hover:text-text">View all expiring</button>
         </div>
       )}
 
       <div className="panel">
-        <div className="panel-header">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-border gap-3">
           <div>
             <h2 className="text-lg font-semibold text-text">Permit Tracker</h2>
             <p className="text-sm text-muted">
@@ -548,7 +584,7 @@ export function PermitTracker() {
               {hasActiveFilters && ' (filtered)'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* New Permit button */}
             <button
               onClick={() => setIsAddModalOpen(true)}
@@ -572,7 +608,7 @@ export function PermitTracker() {
                 placeholder="Search permits..."
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                className="input pl-10 w-64"
+                className="input pl-10 w-full sm:w-48 md:w-56"
               />
               {filters.search && (
                 <button
@@ -707,11 +743,60 @@ export function PermitTracker() {
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="text-xs text-muted hover:text-text ml-auto"
+                  className="text-xs text-muted hover:text-text"
                 >
-                  Clear all filters
+                  Clear all
                 </button>
               )}
+
+              {/* Saved Presets */}
+              <div className="flex items-center gap-2 ml-auto">
+                {savedPresets.map((preset) => (
+                  <div key={preset.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => loadPreset(preset)}
+                      className="px-2 py-1 rounded-lg bg-surface2 border border-border text-xs text-muted hover:text-text hover:border-accent transition-colors"
+                    >
+                      {preset.name}
+                    </button>
+                    <button
+                      onClick={() => deletePreset(preset.id)}
+                      className="text-muted hover:text-danger"
+                      title="Remove preset"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                {hasActiveFilters && !showSavePreset && (
+                  <button
+                    onClick={() => setShowSavePreset(true)}
+                    className="px-2 py-1 rounded-lg text-xs text-accent hover:bg-accent/10 transition-colors"
+                  >
+                    Save filter
+                  </button>
+                )}
+                {showSavePreset && (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      autoFocus
+                      type="text"
+                      value={presetName}
+                      onChange={(e) => setPresetName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') savePreset();
+                        if (e.key === 'Escape') { setShowSavePreset(false); setPresetName(''); }
+                      }}
+                      placeholder="Preset name…"
+                      className="input text-xs py-1 px-2 w-28"
+                    />
+                    <button onClick={savePreset} className="btn btn-primary btn-sm text-xs py-1">Save</button>
+                    <button onClick={() => { setShowSavePreset(false); setPresetName(''); }} className="text-muted hover:text-text text-xs">Cancel</button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
