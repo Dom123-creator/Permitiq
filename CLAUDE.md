@@ -75,7 +75,16 @@ The working HTML/CSS/JS prototype (`permit-agent-dashboard.html`) contains:
    - Demo fallback responses for Harris County electrical, Austin HVAC, NYC DOB plumbing
    - Suggestion chips on load, typing indicator, searching animation
 
-### Current Build Coverage: 47%
+### Deployment Status: LIVE
+
+| Item | Detail |
+|---|---|
+| **Status** | Live on Render |
+| **Database** | Neon PostgreSQL (provisioned and seeded) |
+| **Domain** | permitiq.builders (purchased via Railway) |
+| **Login** | admin@permitiq.dev / permitiq-dev |
+
+### Current Build Coverage: 75%
 
 | Feature | Status |
 |---|---|
@@ -83,19 +92,23 @@ The working HTML/CSS/JS prototype (`permit-agent-dashboard.html`) contains:
 | Task Manager (Manual) | ✅ Built |
 | Rule Engine (Auto-assign) | ✅ Built |
 | AI Chat + Live Citations | ✅ Built |
-| Document Management | ❌ Missing — Phase 1 |
-| Inspection Scheduling & Tracking | ❌ Missing — Phase 2 |
-| Fee Tracking & Payment Log | ❌ Missing — Phase 3 |
-| Application Submission Workflow | ❌ Missing — Phase 3 |
-| Multi-User / Role-Based Access | ❌ Missing — Phase 3 |
+| Document Management | ✅ Built |
+| Inspection Scheduling & Tracking | ✅ Built |
+| Fee Tracking & Payment Log | ✅ Built |
+| Application Submission Workflow | ✅ Built |
+| Multi-User / Role-Based Access | ✅ Built |
 | Permit Expiry Tracking | ✅ Built |
-| Cost Impact Calculator | ❌ Missing — Phase 2 |
-| Email Draft Review UI | ⚠️ Partial — Phase 2 |
-| Audit Trail / Permit History | ❌ Missing — Phase 2 |
+| Cost Impact Calculator | ✅ Built |
+| Email Draft Review UI | ✅ Built |
+| Audit Trail / Permit History | ✅ Built |
 | Search & Filter on Permit Table | ✅ Built |
-| Procore / PM Integration | ❌ Missing — Phase 3 |
+| Procore / PM Integration | ✅ Built |
 | Onboarding Flow & Empty States | ✅ Built |
-| Mobile Responsive Layout | ❌ Missing — Phase 4 |
+| Analytics Dashboard | ✅ Built |
+| REST API + Webhooks | ✅ Built |
+| SSO (Google + Microsoft) | ✅ Built |
+| Mobile Responsive Layout | ⚠️ Partial |
+| Test Coverage | ❌ Missing — Critical |
 
 ---
 
@@ -247,7 +260,7 @@ Email:            SendGrid (digest reports, follow-up drafts)
 Notifications:    Slack Bot API (channel alerts)
 Integrations:     Procore OAuth 2.0, Buildertrend CSV, Zapier webhook
 Auth:             JWT + role-based middleware
-Deployment:       Railway or Render (MVP), then AWS/GCP for enterprise
+Deployment:       Render (live) — domain: permitiq.builders (purchased via Railway)
 ```
 
 **Database schema — key tables:**
@@ -615,5 +628,5 @@ proper full-stack application following the architecture above.
 
 ---
 
-*Last updated: Feb 2026 — generated from Claude.ai design session*
-*Next session: Start with Task 1 (project scaffold) and Task 3 (document management)*
+*Last updated: Mar 12, 2026 — PermitIQ is live on Render with Neon PostgreSQL*
+*Next priorities: Test coverage, custom domain DNS setup, Redis-backed rate limiting*
