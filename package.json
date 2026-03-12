@@ -36,6 +36,7 @@
     "bcryptjs": "^3.0.3",
     "csv-parse": "^6.1.0",
     "drizzle-orm": "^0.45.1",
+    "ioredis": "^5.10.0",
     "next": "^14.2.35",
     "next-auth": "^5.0.0-beta.25",
     "node-cron": "^4.2.1",
